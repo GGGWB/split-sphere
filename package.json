@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "pack:win": "electron-builder --win nsis"
+    "pack:win": "electron-builder --win nsis --publish never"
   },
   "devDependencies": {
     "electron": "^31.7.7",
