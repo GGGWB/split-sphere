@@ -1,0 +1,241 @@
+:root {
+  --line: rgba(31, 30, 36, 0.12);
+  --ring-1: #ff6f3c;
+  --ring-2: #ffaa5a;
+  --ring-3: #f7d98c;
+  --ball: #19222d;
+  --ball-text: #fff;
+  --shadow: 0 18px 35px rgba(29, 22, 18, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: transparent;
+}
+
+.dock {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.page-glow {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(24px);
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.glow-a {
+  width: 220px;
+  height: 220px;
+  right: 8px;
+  bottom: 18px;
+  background: #ff9548;
+}
+
+.glow-b {
+  width: 190px;
+  height: 190px;
+  right: 36px;
+  bottom: 70px;
+  background: #ff5f6d;
+}
+
+.launcher {
+  position: absolute;
+  right: 44px;
+  bottom: 38px;
+  width: 0;
+  height: 0;
+  z-index: 20;
+}
+
+button {
+  border: 0;
+  border-radius: 11px;
+  background: #1b2330;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+button.ghost {
+  background: #ffffff;
+  color: #2d2c34;
+  border: 1px solid var(--line);
+}
+
+.ball {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  border: 0;
+  padding: 8px;
+  color: var(--ball-text);
+  background: var(--ball);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.26);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  line-height: 1.2;
+  font-size: 12px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  user-select: none;
+}
+
+.center-ball {
+  width: 86px;
+  height: 86px;
+  background: radial-gradient(circle at 30% 25%, #ff9f43, #ff5a31 78%);
+  font-size: 16px;
+  font-family: "ZCOOL KuaiLe", cursive;
+  z-index: 14;
+}
+
+.orbit-ball {
+  transform: translate(-50%, -50%) translate(0, 0) scale(0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.45s cubic-bezier(0.2, 1.2, 0.32, 1), opacity 0.3s ease;
+  transition-delay: var(--delay, 0s);
+}
+
+.orbit-ball.ring-1 {
+  background: radial-gradient(circle at 25% 20%, #ff9f52, var(--ring-1) 78%);
+}
+
+.orbit-ball.ring-2 {
+  background: radial-gradient(circle at 25% 20%, #ffc56e, var(--ring-2) 78%);
+  color: #2d1f0f;
+  box-shadow: 0 10px 25px rgba(153, 97, 44, 0.28);
+}
+
+.orbit-ball.ring-3 {
+  background: radial-gradient(circle at 25% 20%, #fff0b4, var(--ring-3) 78%);
+  color: #493108;
+  box-shadow: 0 10px 25px rgba(130, 109, 53, 0.25);
+}
+
+.launcher.open .orbit-ball {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(1);
+}
+
+.editor-panel {
+  position: absolute;
+  right: 146px;
+  bottom: 36px;
+  width: 370px;
+  max-height: 470px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 250, 242, 0.95);
+  backdrop-filter: blur(9px);
+  box-shadow: var(--shadow);
+  padding: 12px;
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 30;
+}
+
+.editor-panel.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.editor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.editor-actions button {
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #615e68;
+}
+
+.editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.editor-item {
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.editor-item label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  color: #615e68;
+}
+
+.editor-item input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  padding: 7px 9px;
+  font: inherit;
+  background: #fff;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%) translateY(20px);
+  background: #1c2430;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: 0.25s ease;
+  z-index: 50;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

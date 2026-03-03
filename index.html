@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>悬浮文案球复制器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Noto+Sans+SC:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="dock" id="dock">
+      <div class="page-glow glow-a"></div>
+      <div class="page-glow glow-b"></div>
+
+      <div class="launcher" id="launcher">
+        <button id="centerBall" class="ball center-ball" type="button" aria-expanded="false">展开</button>
+        <div id="orbit"></div>
+      </div>
+
+      <section id="editorPanel" class="editor-panel" aria-hidden="true">
+        <div class="editor-head">
+          <strong>文案编辑</strong>
+          <div class="editor-actions">
+            <button id="fillDemoBtn" type="button">填充示例</button>
+            <button id="clearBtn" type="button" class="ghost">清空</button>
+            <button id="closeEditorBtn" class="close-editor" type="button" aria-label="关闭编辑">关闭</button>
+          </div>
+        </div>
+        <p class="hint">左键主球展开/收起。右键主球编辑。球内仅显示前 4 字，复制为全文。</p>
+        <div class="editor" id="editor"></div>
+      </section>
+
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
