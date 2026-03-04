@@ -21,6 +21,39 @@ const desktopBridge = window.desktopBridge;
 let texts = loadTexts();
 let toastTimer = null;
 
+function debugLog(type, data) {
+  if (!desktopBridge || typeof desktopBridge.logDebug !== "function") return;
+  desktopBridge.logDebug(type, data);
+}
+
+function describeTarget(target) {
+  if (!target || !(target instanceof Element)) return String(target);
+  const tag = target.tagName ? target.tagName.toLowerCase() : "node";
+  const id = target.id ? `#${target.id}` : "";
+  const classes = target.classList && target.classList.length > 0
+    ? `.${Array.from(target.classList).slice(0, 3).join(".")}`
+    : "";
+  return `${tag}${id}${classes}`;
+}
+
+function logCenterGeometry(reason) {
+  const rect = centerBall.getBoundingClientRect();
+  debugLog("center-geometry", {
+    reason,
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    rect: {
+      left: Math.round(rect.left),
+      top: Math.round(rect.top),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      right: Math.round(rect.right),
+      bottom: Math.round(rect.bottom),
+    },
+    open: launcher.classList.contains("open"),
+    editor: editorPanel.classList.contains("show"),
+  });
+}
+
 function loadTexts() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
@@ -62,15 +95,18 @@ function getPreviewText(text) {
 async function copyText(text) {
   const raw = String(text || "");
   if (!raw.trim()) {
+    debugLog("copy-empty");
     showToast("该球暂无文案");
     return;
   }
 
   try {
     await navigator.clipboard.writeText(raw);
+    debugLog("copy-success", { length: raw.length });
     showToast(`已复制: ${raw}`);
     if (launcher.classList.contains("open")) setOrbitOpen(false);
   } catch (_err) {
+    debugLog("copy-fallback", { length: raw.length });
     const input = document.createElement("textarea");
     input.value = raw;
     document.body.appendChild(input);
@@ -172,45 +208,88 @@ function syncInteractionLock() {
   if (!desktopBridge || typeof desktopBridge.setWindowPreset !== "function") return;
   const isOrbitOpen = launcher.classList.contains("open");
   const isEditorOpen = editorPanel.classList.contains("show");
-  desktopBridge.setWindowPreset(isOrbitOpen || isEditorOpen ? "expanded" : "compact");
+  const preset = isOrbitOpen || isEditorOpen ? "expanded" : "compact";
+  debugLog("set-window-preset", { preset, isOrbitOpen, isEditorOpen });
+  desktopBridge.setWindowPreset(preset);
 }
 
 function setOrbitOpen(open) {
+  debugLog("set-orbit-open", { open, from: launcher.classList.contains("open") });
   launcher.classList.toggle("open", open);
   centerBall.setAttribute("aria-expanded", String(open));
   syncInteractionLock();
+  logCenterGeometry("set-orbit-open");
 }
 
 function setEditorVisible(show) {
+  debugLog("set-editor-visible", { show, from: editorPanel.classList.contains("show") });
   editorPanel.classList.toggle("show", show);
   editorPanel.setAttribute("aria-hidden", String(!show));
   syncInteractionLock();
 }
 
 function toggleOrbit() {
+  debugLog("toggle-orbit", { current: launcher.classList.contains("open") });
   setOrbitOpen(!launcher.classList.contains("open"));
 }
 
 centerBall.addEventListener("pointerdown", (event) => {
+  debugLog("center-pointerdown", {
+    button: event.button,
+    x: event.clientX,
+    y: event.clientY,
+    target: describeTarget(event.target),
+  });
   if (event.button !== 0) return;
   event.preventDefault();
   toggleOrbit();
 });
 
 centerBall.addEventListener("keydown", (event) => {
+  debugLog("center-keydown", { key: event.key });
   if (event.key !== "Enter" && event.key !== " ") return;
   event.preventDefault();
   toggleOrbit();
 });
 
 centerBall.addEventListener("contextmenu", (event) => {
+  debugLog("center-contextmenu", {
+    button: event.button,
+    x: event.clientX,
+    y: event.clientY,
+    target: describeTarget(event.target),
+  });
   event.preventDefault();
   setEditorVisible(!editorPanel.classList.contains("show"));
 });
 
 closeEditorBtn.addEventListener("click", () => setEditorVisible(false));
 
+window.addEventListener("pointerdown", (event) => {
+  debugLog("window-pointerdown", {
+    button: event.button,
+    x: event.clientX,
+    y: event.clientY,
+    target: describeTarget(event.target),
+  });
+}, true);
+
+window.addEventListener("contextmenu", (event) => {
+  debugLog("window-contextmenu", {
+    button: event.button,
+    x: event.clientX,
+    y: event.clientY,
+    target: describeTarget(event.target),
+  });
+}, true);
+
 window.addEventListener("click", (event) => {
+  debugLog("window-click", {
+    button: event.button,
+    x: event.clientX,
+    y: event.clientY,
+    target: describeTarget(event.target),
+  });
   const clickedLauncher = launcher.contains(event.target);
   const clickedEditor = editorPanel.contains(event.target);
 
@@ -220,6 +299,23 @@ window.addEventListener("click", (event) => {
 
   if (editorPanel.classList.contains("show") && !clickedEditor && !clickedLauncher) {
     setEditorVisible(false);
+  }
+});
+
+window.addEventListener("keydown", async (event) => {
+  if (!(event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "l")) return;
+  event.preventDefault();
+  if (!desktopBridge || typeof desktopBridge.getDebugLogTail !== "function") return;
+  const tail = await desktopBridge.getDebugLogTail();
+  if (!tail) {
+    showToast("日志为空");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(tail);
+    showToast("调试日志已复制");
+  } catch (_err) {
+    showToast("日志复制失败");
   }
 });
 
@@ -239,8 +335,21 @@ clearBtn.addEventListener("click", () => {
   showToast("已清空");
 });
 
-window.addEventListener("resize", renderOrbit);
+window.addEventListener("resize", () => {
+  renderOrbit();
+  logCenterGeometry("window-resize");
+});
 
 renderEditor();
 renderOrbit();
 syncInteractionLock();
+logCenterGeometry("startup");
+debugLog("renderer-startup", {
+  viewport: { width: window.innerWidth, height: window.innerHeight },
+  userAgent: navigator.userAgent,
+});
+if (desktopBridge && typeof desktopBridge.getDebugLogPath === "function") {
+  desktopBridge.getDebugLogPath().then((logPath) => {
+    debugLog("debug-log-path", { logPath });
+  });
+}
