@@ -18,6 +18,7 @@ const fillDemoBtn = document.getElementById("fillDemoBtn");
 const clearBtn = document.getElementById("clearBtn");
 const closeEditorBtn = document.getElementById("closeEditorBtn");
 const desktopBridge = window.desktopBridge;
+const CENTER_ZONE_SIZE = 58;
 let texts = loadTexts();
 let toastTimer = null;
 
@@ -171,6 +172,13 @@ function renderEditor() {
   });
 }
 
+function isInCenterZone(event) {
+  return (
+    event.clientX >= window.innerWidth - CENTER_ZONE_SIZE &&
+    event.clientY >= window.innerHeight - CENTER_ZONE_SIZE
+  );
+}
+
 function syncWindowPreset() {
   if (!desktopBridge || typeof desktopBridge.setWindowPreset !== "function") return;
   const orbitOpen = launcher.classList.contains("open");
@@ -201,14 +209,34 @@ centerBall.addEventListener("contextmenu", (event) => {
 
 closeEditorBtn.addEventListener("click", () => setEditorVisible(false));
 
+// Fallback hit logic for transparent-edge rendering: if DOM targeting misses the center
+// button but pointer is in the bottom-right center zone, still trigger the core actions.
+window.addEventListener("pointerup", (event) => {
+  if (event.button !== 0) return;
+  if (!isInCenterZone(event)) return;
+  if (centerBall.contains(event.target)) return;
+  setOrbitOpen(!launcher.classList.contains("open"));
+});
+
+window.addEventListener("contextmenu", (event) => {
+  if (!isInCenterZone(event)) return;
+  if (centerBall.contains(event.target)) return;
+  event.preventDefault();
+  setEditorVisible(!editorPanel.classList.contains("show"));
+});
+
 window.addEventListener("click", (event) => {
-  if (launcher.classList.contains("open") && !launcher.contains(event.target)) {
+  if (
+    launcher.classList.contains("open") &&
+    !launcher.contains(event.target) &&
+    !isInCenterZone(event)
+  ) {
     setOrbitOpen(false);
   }
 
   if (editorPanel.classList.contains("show")) {
     const clickedEditor = editorPanel.contains(event.target);
-    const clickedCenter = centerBall.contains(event.target);
+    const clickedCenter = centerBall.contains(event.target) || isInCenterZone(event);
     if (!clickedEditor && !clickedCenter) {
       setEditorVisible(false);
     }
