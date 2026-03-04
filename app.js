@@ -5,6 +5,7 @@ const ORBIT_OPEN_STAGGER_MS = 25;
 const ORBIT_CLOSE_STAGGER_MS = 20;
 const ORBIT_TRANSITION_MS = 450;
 const RETURN_TO_ANCHOR_DELAY_MS = ORBIT_TRANSITION_MS + ORBIT_CLOSE_STAGGER_MS * (TOTAL_BALLS - 1) + 120;
+const OPEN_FROM_ANCHOR_GUARD_MS = 220;
 const MODE = new URLSearchParams(window.location.search).get("mode") || "overlay";
 const IS_ANCHOR_MODE = MODE === "anchor";
 const IS_OVERLAY_MODE = !IS_ANCHOR_MODE;
@@ -31,6 +32,7 @@ let toastTimer = null;
 let returnToAnchorTimer = null;
 let lastCopyText = "";
 let lastCopyAt = 0;
+let suppressCenterClickUntil = 0;
 document.body.classList.add(IS_ANCHOR_MODE ? "mode-anchor" : "mode-overlay");
 
 function getDesktopBridge() {
@@ -122,6 +124,14 @@ function showToast(message) {
   toastTimer = setTimeout(() => {
     toast.classList.remove("show");
   }, 1200);
+}
+
+function hideToast() {
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
+  toast.classList.remove("show");
 }
 
 function getPreviewText(text) {
@@ -326,6 +336,7 @@ function setOrbitOpen(open) {
   centerBall.setAttribute("aria-expanded", String(open));
   logCenterGeometry(open ? "set-orbit-open" : "set-orbit-close");
   if (open) {
+    hideToast();
     clearReturnToAnchorTimer();
     return;
   }
@@ -361,6 +372,10 @@ centerBall.addEventListener("click", (event) => {
     target: describeTarget(event.target),
   });
   if (event.button !== 0) return;
+  if (IS_OVERLAY_MODE && Date.now() < suppressCenterClickUntil) {
+    debugLog("center-click-suppressed", { until: suppressCenterClickUntil });
+    return;
+  }
   if (IS_ANCHOR_MODE) {
     requestOpenOverlay("orbit");
     return;
@@ -434,6 +449,16 @@ window.addEventListener("click", (event) => {
   }
 });
 
+window.addEventListener("blur", () => {
+  if (!IS_OVERLAY_MODE) return;
+  const hasOpenUi = launcher.classList.contains("open") || editorPanel.classList.contains("show");
+  if (!hasOpenUi) return;
+  debugLog("window-blur-autoclose");
+  setEditorVisible(false);
+  setOrbitOpen(false);
+  maybeReturnToAnchor(0);
+});
+
 window.addEventListener("keydown", async (event) => {
   if (!(event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "l")) return;
   event.preventDefault();
@@ -501,6 +526,8 @@ if (bridgeForLogPath && typeof bridgeForLogPath.onHostCommand === "function") {
     if (!IS_OVERLAY_MODE || !payload || typeof payload !== "object") return;
     const type = payload.type;
     debugLog("host-command", payload);
+    suppressCenterClickUntil = Date.now() + OPEN_FROM_ANCHOR_GUARD_MS;
+    hideToast();
     if (type === "open-orbit") {
       setEditorVisible(false);
       setOrbitOpen(true);
