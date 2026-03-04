@@ -104,11 +104,11 @@ function createBall(index, text) {
 
   const isMobile = window.matchMedia("(max-width: 780px)").matches;
   // Keep all balls in the upper-left sector and enlarge ring gaps to avoid overlap.
-  const radii = isMobile ? [96, 168, 240] : [122, 216, 310];
+  const radii = isMobile ? [86, 152, 220] : [116, 206, 298];
   const radius = radii[ringInfo.ring] || radii[0];
 
-  const arcStart = 168;
-  const arcEnd = 286;
+  const arcStart = 190;
+  const arcEnd = 260;
   const step = ringInfo.count === 1 ? 0 : (arcEnd - arcStart) / (ringInfo.count - 1);
   const angleDeg = arcStart + step * ringInfo.indexInRing;
   const angle = angleDeg * (Math.PI / 180);
