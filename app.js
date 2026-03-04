@@ -158,30 +158,43 @@ function getRingInfo(index) {
   return { ring: 0, indexInRing: 0, count: 1 };
 }
 
-function createBall(index, text) {
-  const ringInfo = getRingInfo(index);
-  const ball = document.createElement("button");
-  ball.type = "button";
-  ball.className = `ball orbit-ball ring-${ringInfo.ring + 1}`;
-  ball.textContent = getPreviewText(text);
-  ball.title = text || "空文案";
-  ball.style.setProperty("--delay", `${index * 0.025}s`);
-
+function getOrbitRadii() {
   const isMobile = window.matchMedia("(max-width: 780px)").matches;
-  // Keep all balls in the upper-left sector and enlarge ring gaps to avoid overlap.
-  const radii = isMobile ? [86, 152, 220] : [116, 206, 298];
-  const radius = radii[ringInfo.ring] || radii[0];
+  return isMobile ? [86, 152, 220] : [116, 206, 298];
+}
 
+function getBallOffset(index) {
+  const ringInfo = getRingInfo(index);
+  const radii = getOrbitRadii();
+  const radius = radii[ringInfo.ring] || radii[0];
   const arcStart = 190;
   const arcEnd = 260;
   const step = ringInfo.count === 1 ? 0 : (arcEnd - arcStart) / (ringInfo.count - 1);
   const angleDeg = arcStart + step * ringInfo.indexInRing;
   const angle = angleDeg * (Math.PI / 180);
+  return {
+    ringInfo,
+    dx: Math.cos(angle) * radius,
+    dy: Math.sin(angle) * radius,
+  };
+}
 
-  const dx = `${Math.cos(angle) * radius}px`;
-  const dy = `${Math.sin(angle) * radius}px`;
-  ball.style.setProperty("--dx", dx);
-  ball.style.setProperty("--dy", dy);
+function setBallOffset(ball, index) {
+  const { dx, dy } = getBallOffset(index);
+  ball.style.setProperty("--dx", `${dx}px`);
+  ball.style.setProperty("--dy", `${dy}px`);
+}
+
+function createBall(index, text) {
+  const { ringInfo } = getBallOffset(index);
+  const ball = document.createElement("button");
+  ball.type = "button";
+  ball.className = `ball orbit-ball ring-${ringInfo.ring + 1}`;
+  ball.dataset.index = String(index);
+  ball.textContent = getPreviewText(text);
+  ball.title = text || "空文案";
+  ball.style.setProperty("--delay", `${index * 0.025}s`);
+  setBallOffset(ball, index);
 
   ball.addEventListener("click", () => copyText(text));
   return ball;
@@ -192,6 +205,21 @@ function renderOrbit() {
   texts.forEach((text, index) => {
     orbit.appendChild(createBall(index, text));
   });
+}
+
+function updateOrbitLayout() {
+  orbit.querySelectorAll(".orbit-ball").forEach((ball) => {
+    const index = Number(ball.dataset.index);
+    if (Number.isNaN(index)) return;
+    setBallOffset(ball, index);
+  });
+}
+
+function updateOrbitText(index, text) {
+  const ball = orbit.querySelector(`.orbit-ball[data-index="${index}"]`);
+  if (!ball) return;
+  ball.textContent = getPreviewText(text);
+  ball.title = text || "空文案";
 }
 
 function getLabel(index) {
@@ -216,7 +244,7 @@ function createEditorItem(index, text) {
   input.addEventListener("input", () => {
     texts[index] = input.value;
     saveTexts();
-    renderOrbit();
+    updateOrbitText(index, input.value);
   });
 
   wrap.appendChild(label);
@@ -365,7 +393,7 @@ clearBtn.addEventListener("click", () => {
 });
 
 window.addEventListener("resize", () => {
-  renderOrbit();
+  updateOrbitLayout();
   logCenterGeometry("window-resize");
 });
 

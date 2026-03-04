@@ -43,6 +43,8 @@ body {
 button {
   border: 0;
   border-radius: 11px;
+  appearance: none;
+  -webkit-appearance: none;
   background: #1b2330;
   color: #fff;
   font: inherit;
@@ -85,6 +87,8 @@ button.ghost {
   font-size: 0;
   color: transparent;
   z-index: 14;
+  backface-visibility: hidden;
+  outline: none;
 }
 
 .orbit-ball {
@@ -93,6 +97,8 @@ button.ghost {
   pointer-events: none;
   transition: transform 0.45s cubic-bezier(0.2, 1.2, 0.32, 1), opacity 0.3s ease;
   transition-delay: var(--delay, 0s);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 .orbit-ball.ring-1 {
