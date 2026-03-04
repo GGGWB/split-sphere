@@ -162,10 +162,10 @@ function openOverlay(mode) {
   const command = mode === "editor" ? "open-editor" : "open-orbit";
   applyBottomRight(anchorWindow, WINDOW_SIZES.anchor);
   applyBottomRight(overlayWindow, WINDOW_SIZES.overlay);
+  sendOverlayCommand(command);
+  if (anchorWindow.isVisible()) anchorWindow.hide();
   if (!overlayWindow.isVisible()) overlayWindow.show();
   overlayWindow.focus();
-  if (anchorWindow.isVisible()) anchorWindow.hide();
-  sendOverlayCommand(command);
   appendDebugLog("main", "open-overlay", { mode, command });
 }
 

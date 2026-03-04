@@ -4,7 +4,7 @@ const TOTAL_BALLS = RING_COUNTS.reduce((sum, count) => sum + count, 0);
 const ORBIT_OPEN_STAGGER_MS = 25;
 const ORBIT_CLOSE_STAGGER_MS = 20;
 const ORBIT_TRANSITION_MS = 450;
-const RETURN_TO_ANCHOR_DELAY_MS = ORBIT_TRANSITION_MS + ORBIT_CLOSE_STAGGER_MS * (TOTAL_BALLS - 1) + 120;
+const RETURN_TO_ANCHOR_DELAY_MS = ORBIT_TRANSITION_MS + ORBIT_CLOSE_STAGGER_MS * (TOTAL_BALLS - 1) + 40;
 const OPEN_FROM_ANCHOR_GUARD_MS = 220;
 const MODE = new URLSearchParams(window.location.search).get("mode") || "overlay";
 const IS_ANCHOR_MODE = MODE === "anchor";
@@ -373,8 +373,11 @@ centerBall.addEventListener("click", (event) => {
   });
   if (event.button !== 0) return;
   if (IS_OVERLAY_MODE && Date.now() < suppressCenterClickUntil) {
-    debugLog("center-click-suppressed", { until: suppressCenterClickUntil });
-    return;
+    if (launcher.classList.contains("open")) {
+      debugLog("center-click-suppressed", { until: suppressCenterClickUntil, reason: "prevent-immediate-close" });
+      return;
+    }
+    suppressCenterClickUntil = 0;
   }
   if (IS_ANCHOR_MODE) {
     requestOpenOverlay("orbit");
