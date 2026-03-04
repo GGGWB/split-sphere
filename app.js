@@ -107,8 +107,8 @@ function createBall(index, text) {
   const radii = isMobile ? [96, 168, 240] : [122, 216, 310];
   const radius = radii[ringInfo.ring] || radii[0];
 
-  const arcStart = 190;
-  const arcEnd = 266;
+  const arcStart = 168;
+  const arcEnd = 286;
   const step = ringInfo.count === 1 ? 0 : (arcEnd - arcStart) / (ringInfo.count - 1);
   const angleDeg = arcStart + step * ringInfo.indexInRing;
   const angle = angleDeg * (Math.PI / 180);
@@ -168,7 +168,6 @@ function renderEditor() {
 
 function setOrbitOpen(open) {
   launcher.classList.toggle("open", open);
-  centerBall.textContent = open ? "收起" : "展开";
   centerBall.setAttribute("aria-expanded", String(open));
 }
 

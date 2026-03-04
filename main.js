@@ -5,8 +5,8 @@ function createMainWindow() {
   const width = 520;
   const height = 560;
   const workArea = screen.getPrimaryDisplay().workArea;
-  const x = Math.max(0, Math.round(workArea.x + workArea.width - width - 14));
-  const y = Math.max(0, Math.round(workArea.y + workArea.height - height - 14));
+  const x = Math.round(workArea.x + workArea.width - width);
+  const y = Math.round(workArea.y + workArea.height - height);
 
   const win = new BrowserWindow({
     width,
