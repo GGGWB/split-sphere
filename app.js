@@ -62,12 +62,13 @@ async function copyText(text) {
   const raw = String(text || "");
   if (!raw.trim()) {
     showToast("该球暂无文案");
-    return;
+    return false;
   }
 
   try {
     await navigator.clipboard.writeText(raw);
     showToast(`已复制: ${raw}`);
+    return true;
   } catch (_err) {
     const input = document.createElement("textarea");
     input.value = raw;
@@ -76,6 +77,7 @@ async function copyText(text) {
     document.execCommand("copy");
     input.remove();
     showToast(`已复制: ${raw}`);
+    return true;
   }
 }
 
@@ -117,7 +119,10 @@ function createBall(index, text) {
   ball.style.setProperty("--dx", dx);
   ball.style.setProperty("--dy", dy);
 
-  ball.addEventListener("click", () => copyText(text));
+  ball.addEventListener("click", async () => {
+    const copied = await copyText(text);
+    if (copied) setOrbitOpen(false);
+  });
   return ball;
 }
 
