@@ -1,57 +1,72 @@
 # Split Sphere
 
-纯悬浮球桌面程序（Electron），用于快速复制常用文案。
+> A minimal floating command orb for ultra-fast clipboard snippets.
 
-## 功能
+`Split Sphere` 是一个基于 Electron 的透明悬浮球桌面程序。它驻留在屏幕右下角，以三层轨道球阵提供高频文案的一键复制能力。
 
-- 右下角主悬浮球，左键展开/收起。
-- 三圈球阵：`3 + 4 + 5`，向左上扇区展开。
-- 点击任意球：复制对应文案到系统剪贴板。
-- 球内仅显示前 4 个字；复制时保留全文。
-- 右键主球：打开文案编辑面板。
-- 编辑内容自动保存到本地（`localStorage`）。
+## Core Interaction Matrix
 
-## 项目结构
+- `LMB` 主球：展开 / 收拢轨道球
+- `RMB` 主球：打开文案配置面板
+- 点击轨道球：复制对应文案到系统剪贴板
+- 球内展示：最多前 4 个字（复制仍为完整原文）
 
-- `index.html`：悬浮球界面结构
-- `styles.css`：动画与样式
-- `app.js`：交互逻辑（展开、复制、右键编辑）
-- `main.js`：Electron 主进程（透明无边框置顶窗口）
-- `.github/workflows/build.yml`：GitHub Actions 云端打包 Windows EXE
+## Smart Collapse Zone（你提到的特性）
 
-## 本地开发
+程序当前存在一个“近场交互区”特性：
+
+- 在圆心附近（主球及轨道球可点击范围）再次点击，外围球会收回
+- 点击更远处的透明区域，通常不会触发收回
+
+这是由透明无边框窗口 + 组件命中区域共同形成的行为，适合悬浮工具场景，能避免误触导致频繁收起。
+
+## Visual & Runtime Specs
+
+- 纯悬浮层：无网页主体区
+- 透明无边框窗口（Always On Top）
+- 主球圆心锚定在窗口右下角（仅显示左上象限）
+- 三圈轨道布局：`3 + 4 + 5`，向左上扇区展开
+- 本地持久化：`localStorage`
+
+## Project Topology
+
+- `index.html`：UI 骨架
+- `styles.css`：视觉系统与动效
+- `app.js`：轨道排布、复制、编辑交互
+- `main.js`：Electron 主进程窗口配置
+- `.github/workflows/build.yml`：云端 Windows 打包流水线
+
+## Local Launch
 
 ```bash
 npm install
 npm start
 ```
 
-## 打包 Windows EXE（本地）
+## Build Windows EXE (Local)
 
 ```bash
 npm install
 npm run pack:win
 ```
 
-打包结果输出到 `dist/`。
+输出目录：`dist/`
 
-## 云端打包 EXE（GitHub Actions）
+## Cloud Build EXE (GitHub Actions)
 
-已内置工作流：`.github/workflows/build.yml`
+仓库已内置工作流 `Build Windows EXE`：
 
-触发方式：
+- 自动触发：push 到 `main/master`
+- 手动触发：GitHub Actions -> `Run workflow`
 
-- 推送到 `main` 或 `master`
-- 在 GitHub 仓库 `Actions` 页面手动点击 `Run workflow`
+下载步骤：
 
-下载方式：
-
-1. 打开仓库的 `Actions`
-2. 进入 `Build Windows EXE`
+1. 进入仓库 `Actions`
+2. 选择 `Build Windows EXE`
 3. 打开成功运行记录
-4. 在底部 `Artifacts` 下载 `windows-exe-build`
+4. 在 `Artifacts` 下载 `windows-exe-build`
 
-## 说明
+## Notes
 
-- 这是桌面应用，不会在浏览器打开网页主体。
-- 运行时视觉上仅显示悬浮球组件和（按需出现的）编辑面板。
+- 这是桌面应用形态，不依赖浏览器页面展示主体。
+- 若需要“点击任意远处也收起”，可以再加全局收拢策略（可选增强）。
