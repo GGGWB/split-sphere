@@ -10,6 +10,7 @@ const defaultTexts = [
 
 const launcher = document.getElementById("launcher");
 const centerBall = document.getElementById("centerBall");
+const centerHitbox = document.getElementById("centerHitbox");
 const orbit = document.getElementById("orbit");
 const editorPanel = document.getElementById("editorPanel");
 const editor = document.getElementById("editor");
@@ -202,6 +203,15 @@ centerBall.addEventListener("contextmenu", (event) => {
   setEditorVisible(!editorPanel.classList.contains("show"));
 });
 
+centerHitbox.addEventListener("click", () => {
+  setOrbitOpen(!launcher.classList.contains("open"));
+});
+
+centerHitbox.addEventListener("contextmenu", (event) => {
+  event.preventDefault();
+  setEditorVisible(!editorPanel.classList.contains("show"));
+});
+
 closeEditorBtn.addEventListener("click", () => setEditorVisible(false));
 
 // Fallback for transparent-edge hit inconsistencies on desktop:
@@ -215,7 +225,7 @@ window.addEventListener("pointerup", (event) => {
 
 window.addEventListener("contextmenu", (event) => {
   if (!isInCenterZone(event)) return;
-  if (centerBall.contains(event.target)) return;
+  if (centerBall.contains(event.target) || centerHitbox.contains(event.target)) return;
   event.preventDefault();
   setEditorVisible(!editorPanel.classList.contains("show"));
 });
@@ -231,7 +241,10 @@ window.addEventListener("click", (event) => {
 
   if (editorPanel.classList.contains("show")) {
     const clickedEditor = editorPanel.contains(event.target);
-    const clickedCenter = centerBall.contains(event.target) || isInCenterZone(event);
+    const clickedCenter =
+      centerBall.contains(event.target) ||
+      centerHitbox.contains(event.target) ||
+      isInCenterZone(event);
     if (!clickedEditor && !clickedCenter) {
       setEditorVisible(false);
     }
