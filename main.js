@@ -2,6 +2,38 @@ const path = require("path");
 const { app, BrowserWindow, Menu, ipcMain, screen } = require("electron");
 
 let mainWindow = null;
+let interactionLocked = false;
+let passthroughTimer = null;
+let ignoreState = null;
+const CENTER_HOTZONE_SIZE = 84;
+
+function setIgnoreMouseEvents(ignore) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (ignoreState === ignore) return;
+  ignoreState = ignore;
+  mainWindow.setIgnoreMouseEvents(ignore, { forward: true });
+}
+
+function isCursorInCenterHotzone() {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  const p = screen.getCursorScreenPoint();
+  const b = mainWindow.getBounds();
+  return (
+    p.x >= b.x + b.width - CENTER_HOTZONE_SIZE &&
+    p.x <= b.x + b.width &&
+    p.y >= b.y + b.height - CENTER_HOTZONE_SIZE &&
+    p.y <= b.y + b.height
+  );
+}
+
+function refreshMouseMode() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (interactionLocked) {
+    setIgnoreMouseEvents(false);
+    return;
+  }
+  setIgnoreMouseEvents(!isCursorInCenterHotzone());
+}
 
 function createMainWindow() {
   const width = 520;
@@ -35,11 +67,23 @@ function createMainWindow() {
 
   Menu.setApplicationMenu(null);
   mainWindow.loadFile(path.join(__dirname, "index.html"));
+
+  if (passthroughTimer) clearInterval(passthroughTimer);
+  passthroughTimer = setInterval(refreshMouseMode, 16);
+  mainWindow.on("closed", () => {
+    if (passthroughTimer) clearInterval(passthroughTimer);
+    passthroughTimer = null;
+    mainWindow = null;
+    ignoreState = null;
+  });
+  mainWindow.on("move", refreshMouseMode);
+  mainWindow.on("resize", refreshMouseMode);
+  refreshMouseMode();
 }
 
-ipcMain.on("set-mouse-passthrough", (_event, ignore) => {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  mainWindow.setIgnoreMouseEvents(Boolean(ignore), { forward: true });
+ipcMain.on("set-interaction-lock", (_event, locked) => {
+  interactionLocked = Boolean(locked);
+  refreshMouseMode();
 });
 
 app.whenReady().then(() => {

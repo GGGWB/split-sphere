@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("desktopBridge", {
-  setMousePassthrough(ignore) {
-    ipcRenderer.send("set-mouse-passthrough", Boolean(ignore));
+  setInteractionLock(locked) {
+    ipcRenderer.send("set-interaction-lock", Boolean(locked));
   },
 });

@@ -21,9 +21,6 @@ const desktopBridge = window.desktopBridge;
 const CENTER_ZONE_SIZE = 62;
 let texts = loadTexts();
 let toastTimer = null;
-let passthroughState = null;
-let lastPointerX = window.innerWidth;
-let lastPointerY = window.innerHeight;
 
 function loadTexts() {
   try {
@@ -177,39 +174,23 @@ function isInCenterZone(event) {
   );
 }
 
-function isInCenterZoneByPoint(x, y) {
-  return x >= window.innerWidth - CENTER_ZONE_SIZE && y >= window.innerHeight - CENTER_ZONE_SIZE;
-}
-
-function setMousePassthrough(ignore) {
-  if (!desktopBridge || typeof desktopBridge.setMousePassthrough !== "function") return;
-  if (passthroughState === ignore) return;
-  passthroughState = ignore;
-  desktopBridge.setMousePassthrough(ignore);
-}
-
-function syncMousePassthrough() {
+function syncInteractionLock() {
+  if (!desktopBridge || typeof desktopBridge.setInteractionLock !== "function") return;
   const isOrbitOpen = launcher.classList.contains("open");
   const isEditorOpen = editorPanel.classList.contains("show");
-  if (isOrbitOpen || isEditorOpen) {
-    setMousePassthrough(false);
-    return;
-  }
-
-  const keepInteractive = isInCenterZoneByPoint(lastPointerX, lastPointerY);
-  setMousePassthrough(!keepInteractive);
+  desktopBridge.setInteractionLock(isOrbitOpen || isEditorOpen);
 }
 
 function setOrbitOpen(open) {
   launcher.classList.toggle("open", open);
   centerBall.setAttribute("aria-expanded", String(open));
-  syncMousePassthrough();
+  syncInteractionLock();
 }
 
 function setEditorVisible(show) {
   editorPanel.classList.toggle("show", show);
   editorPanel.setAttribute("aria-hidden", String(!show));
-  syncMousePassthrough();
+  syncInteractionLock();
 }
 
 centerBall.addEventListener("click", () => {
@@ -237,20 +218,6 @@ window.addEventListener("contextmenu", (event) => {
   if (centerBall.contains(event.target)) return;
   event.preventDefault();
   setEditorVisible(!editorPanel.classList.contains("show"));
-});
-
-window.addEventListener("mousemove", (event) => {
-  lastPointerX = event.clientX;
-  lastPointerY = event.clientY;
-  syncMousePassthrough();
-});
-
-window.addEventListener("mouseleave", () => {
-  setMousePassthrough(true);
-});
-
-window.addEventListener("blur", () => {
-  setMousePassthrough(true);
 });
 
 window.addEventListener("click", (event) => {
@@ -291,5 +258,4 @@ window.addEventListener("resize", renderOrbit);
 
 renderEditor();
 renderOrbit();
-setMousePassthrough(false);
-syncMousePassthrough();
+syncInteractionLock();
