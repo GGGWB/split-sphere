@@ -26,7 +26,8 @@ function applyWindowPreset(win, preset) {
 }
 
 function createMainWindow() {
-  const initial = WINDOW_PRESETS.compact;
+  // Safe fallback: keep window usable even if preload bridge fails.
+  const initial = WINDOW_PRESETS.expanded;
   const workArea = screen.getPrimaryDisplay().workArea;
   const x = Math.round(workArea.x + workArea.width - initial.width);
   const y = Math.round(workArea.y + workArea.height - initial.height);
@@ -50,6 +51,7 @@ function createMainWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false,
       preload: path.join(__dirname, "preload.js"),
     },
   });
