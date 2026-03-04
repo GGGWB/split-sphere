@@ -10,7 +10,6 @@ const defaultTexts = [
 
 const launcher = document.getElementById("launcher");
 const centerBall = document.getElementById("centerBall");
-const centerHitbox = document.getElementById("centerHitbox");
 const orbit = document.getElementById("orbit");
 const editorPanel = document.getElementById("editorPanel");
 const editor = document.getElementById("editor");
@@ -18,7 +17,6 @@ const toast = document.getElementById("toast");
 const fillDemoBtn = document.getElementById("fillDemoBtn");
 const clearBtn = document.getElementById("clearBtn");
 const closeEditorBtn = document.getElementById("closeEditorBtn");
-const desktopBridge = window.desktopBridge;
 let texts = loadTexts();
 let toastTimer = null;
 
@@ -172,23 +170,14 @@ function renderEditor() {
   });
 }
 
-function syncWindowPreset() {
-  if (!desktopBridge || typeof desktopBridge.setWindowPreset !== "function") return;
-  const orbitOpen = launcher.classList.contains("open");
-  const editorOpen = editorPanel.classList.contains("show");
-  desktopBridge.setWindowPreset(orbitOpen || editorOpen ? "expanded" : "compact");
-}
-
 function setOrbitOpen(open) {
   launcher.classList.toggle("open", open);
   centerBall.setAttribute("aria-expanded", String(open));
-  syncWindowPreset();
 }
 
 function setEditorVisible(show) {
   editorPanel.classList.toggle("show", show);
   editorPanel.setAttribute("aria-hidden", String(!show));
-  syncWindowPreset();
 }
 
 centerBall.addEventListener("click", () => {
@@ -196,15 +185,6 @@ centerBall.addEventListener("click", () => {
 });
 
 centerBall.addEventListener("contextmenu", (event) => {
-  event.preventDefault();
-  setEditorVisible(!editorPanel.classList.contains("show"));
-});
-
-centerHitbox.addEventListener("click", () => {
-  setOrbitOpen(!launcher.classList.contains("open"));
-});
-
-centerHitbox.addEventListener("contextmenu", (event) => {
   event.preventDefault();
   setEditorVisible(!editorPanel.classList.contains("show"));
 });
@@ -218,7 +198,7 @@ window.addEventListener("click", (event) => {
 
   if (editorPanel.classList.contains("show")) {
     const clickedEditor = editorPanel.contains(event.target);
-    const clickedCenter = centerBall.contains(event.target) || centerHitbox.contains(event.target);
+    const clickedCenter = centerBall.contains(event.target);
     if (!clickedEditor && !clickedCenter) {
       setEditorVisible(false);
     }
@@ -245,4 +225,3 @@ window.addEventListener("resize", renderOrbit);
 
 renderEditor();
 renderOrbit();
-syncWindowPreset();

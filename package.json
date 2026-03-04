@@ -25,7 +25,6 @@
       "styles.css",
       "app.js",
       "main.js",
-      "preload.js",
       "package.json"
     ],
     "directories": {
