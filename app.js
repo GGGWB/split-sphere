@@ -17,6 +17,7 @@ const toast = document.getElementById("toast");
 const fillDemoBtn = document.getElementById("fillDemoBtn");
 const clearBtn = document.getElementById("clearBtn");
 const closeEditorBtn = document.getElementById("closeEditorBtn");
+const desktopBridge = window.desktopBridge;
 let texts = loadTexts();
 let toastTimer = null;
 
@@ -178,6 +179,9 @@ function setOrbitOpen(open) {
 function setEditorVisible(show) {
   editorPanel.classList.toggle("show", show);
   editorPanel.setAttribute("aria-hidden", String(!show));
+  if (desktopBridge && typeof desktopBridge.setWindowPreset === "function") {
+    desktopBridge.setWindowPreset(show ? "expanded" : "compact");
+  }
 }
 
 centerBall.addEventListener("click", () => {
@@ -225,3 +229,6 @@ window.addEventListener("resize", renderOrbit);
 
 renderEditor();
 renderOrbit();
+if (desktopBridge && typeof desktopBridge.setWindowPreset === "function") {
+  desktopBridge.setWindowPreset("compact");
+}
