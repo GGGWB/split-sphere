@@ -17,11 +17,8 @@ const toast = document.getElementById("toast");
 const fillDemoBtn = document.getElementById("fillDemoBtn");
 const clearBtn = document.getElementById("clearBtn");
 const closeEditorBtn = document.getElementById("closeEditorBtn");
-const desktopBridge = window.desktopBridge;
-
 let texts = loadTexts();
 let toastTimer = null;
-let lastPassthrough = null;
 
 function loadTexts() {
   try {
@@ -178,19 +175,6 @@ function setEditorVisible(show) {
   editorPanel.setAttribute("aria-hidden", String(!show));
 }
 
-function setMousePassthrough(ignore) {
-  if (!desktopBridge || typeof desktopBridge.setMousePassthrough !== "function") return;
-  if (lastPassthrough === ignore) return;
-  lastPassthrough = ignore;
-  desktopBridge.setMousePassthrough(ignore);
-}
-
-function getInteractiveHitElement(clientX, clientY) {
-  const hit = document.elementFromPoint(clientX, clientY);
-  if (!(hit instanceof Element)) return null;
-  return hit.closest(".center-ball, .orbit-ball, .editor-panel.show, .editor-panel.show *");
-}
-
 centerBall.addEventListener("click", () => {
   setOrbitOpen(!launcher.classList.contains("open"));
 });
@@ -216,18 +200,6 @@ window.addEventListener("click", (event) => {
   }
 });
 
-window.addEventListener("mousemove", (event) => {
-  const orbitOpen = launcher.classList.contains("open");
-  const editorOpen = editorPanel.classList.contains("show");
-  if (orbitOpen || editorOpen) {
-    setMousePassthrough(false);
-    return;
-  }
-
-  const interactiveHit = getInteractiveHitElement(event.clientX, event.clientY);
-  setMousePassthrough(!interactiveHit);
-});
-
 fillDemoBtn.addEventListener("click", () => {
   texts = normalizeTexts(defaultTexts);
   saveTexts();
@@ -248,4 +220,3 @@ window.addEventListener("resize", renderOrbit);
 
 renderEditor();
 renderOrbit();
-setMousePassthrough(false);
