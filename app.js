@@ -10,7 +10,6 @@ const defaultTexts = [
 
 const launcher = document.getElementById("launcher");
 const centerBall = document.getElementById("centerBall");
-const centerHitbox = document.getElementById("centerHitbox");
 const orbit = document.getElementById("orbit");
 const editorPanel = document.getElementById("editorPanel");
 const editor = document.getElementById("editor");
@@ -19,7 +18,6 @@ const fillDemoBtn = document.getElementById("fillDemoBtn");
 const clearBtn = document.getElementById("clearBtn");
 const closeEditorBtn = document.getElementById("closeEditorBtn");
 const desktopBridge = window.desktopBridge;
-const CENTER_ZONE_SIZE = 62;
 let texts = loadTexts();
 let toastTimer = null;
 
@@ -71,6 +69,7 @@ async function copyText(text) {
   try {
     await navigator.clipboard.writeText(raw);
     showToast(`已复制: ${raw}`);
+    if (launcher.classList.contains("open")) setOrbitOpen(false);
   } catch (_err) {
     const input = document.createElement("textarea");
     input.value = raw;
@@ -79,6 +78,7 @@ async function copyText(text) {
     document.execCommand("copy");
     input.remove();
     showToast(`已复制: ${raw}`);
+    if (launcher.classList.contains("open")) setOrbitOpen(false);
   }
 }
 
@@ -168,13 +168,6 @@ function renderEditor() {
   });
 }
 
-function isInCenterZone(event) {
-  return (
-    event.clientX >= window.innerWidth - CENTER_ZONE_SIZE &&
-    event.clientY >= window.innerHeight - CENTER_ZONE_SIZE
-  );
-}
-
 function syncInteractionLock() {
   if (!desktopBridge || typeof desktopBridge.setWindowPreset !== "function") return;
   const isOrbitOpen = launcher.classList.contains("open");
@@ -194,8 +187,20 @@ function setEditorVisible(show) {
   syncInteractionLock();
 }
 
-centerBall.addEventListener("click", () => {
+function toggleOrbit() {
   setOrbitOpen(!launcher.classList.contains("open"));
+}
+
+centerBall.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  toggleOrbit();
+});
+
+centerBall.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  toggleOrbit();
 });
 
 centerBall.addEventListener("contextmenu", (event) => {
@@ -203,42 +208,18 @@ centerBall.addEventListener("contextmenu", (event) => {
   setEditorVisible(!editorPanel.classList.contains("show"));
 });
 
-centerHitbox.addEventListener("click", () => {
-  setOrbitOpen(!launcher.classList.contains("open"));
-});
-
-centerHitbox.addEventListener("contextmenu", (event) => {
-  event.preventDefault();
-  setEditorVisible(!editorPanel.classList.contains("show"));
-});
-
 closeEditorBtn.addEventListener("click", () => setEditorVisible(false));
 
-window.addEventListener("contextmenu", (event) => {
-  if (!isInCenterZone(event)) return;
-  if (centerBall.contains(event.target) || centerHitbox.contains(event.target)) return;
-  event.preventDefault();
-  setEditorVisible(!editorPanel.classList.contains("show"));
-});
-
 window.addEventListener("click", (event) => {
-  if (
-    launcher.classList.contains("open") &&
-    !launcher.contains(event.target) &&
-    !isInCenterZone(event)
-  ) {
+  const clickedLauncher = launcher.contains(event.target);
+  const clickedEditor = editorPanel.contains(event.target);
+
+  if (launcher.classList.contains("open") && !clickedLauncher) {
     setOrbitOpen(false);
   }
 
-  if (editorPanel.classList.contains("show")) {
-    const clickedEditor = editorPanel.contains(event.target);
-    const clickedCenter =
-      centerBall.contains(event.target) ||
-      centerHitbox.contains(event.target) ||
-      isInCenterZone(event);
-    if (!clickedEditor && !clickedCenter) {
-      setEditorVisible(false);
-    }
+  if (editorPanel.classList.contains("show") && !clickedEditor && !clickedLauncher) {
+    setEditorVisible(false);
   }
 });
 

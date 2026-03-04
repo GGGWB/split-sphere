@@ -3,7 +3,7 @@ const { app, BrowserWindow, Menu, ipcMain, screen } = require("electron");
 
 let mainWindow = null;
 const WINDOW_PRESETS = {
-  compact: { width: 180, height: 180 },
+  compact: { width: 96, height: 96 },
   expanded: { width: 520, height: 560 },
 };
 

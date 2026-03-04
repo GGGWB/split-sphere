@@ -87,20 +87,6 @@ button.ghost {
   z-index: 14;
 }
 
-.center-hitbox {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 56px;
-  height: 56px;
-  transform: translate(-100%, -100%);
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  background: transparent;
-  z-index: 15;
-}
-
 .orbit-ball {
   transform: translate(-50%, -50%) translate(0, 0) scale(0.4);
   opacity: 0;
