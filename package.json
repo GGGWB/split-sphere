@@ -5,7 +5,8 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "pack:win": "electron-builder --win nsis --publish never"
+    "pack:win": "electron-builder --win nsis-web --publish never",
+    "pack:win:offline": "electron-builder --win nsis --publish never"
   },
   "devDependencies": {
     "electron": "^31.7.7",
@@ -14,6 +15,12 @@
   "build": {
     "appId": "com.gggwb.floatingcopyballs",
     "productName": "悬浮文案球复制器",
+    "asar": true,
+    "compression": "maximum",
+    "electronLanguages": [
+      "zh-CN",
+      "en-US"
+    ],
     "files": [
       "index.html",
       "styles.css",
@@ -28,7 +35,7 @@
     "win": {
       "target": [
         {
-          "target": "nsis",
+          "target": "nsis-web",
           "arch": [
             "x64"
           ]

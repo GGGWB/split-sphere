@@ -50,6 +50,13 @@ npm install
 npm run pack:win
 ```
 
+默认 `pack:win` 为在线安装器（`nsis-web`，体积更小）。  
+若需要离线完整安装包：
+
+```bash
+npm run pack:win:offline
+```
+
 输出目录：`dist/`
 
 ## Cloud Build EXE (GitHub Actions)
