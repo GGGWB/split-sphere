@@ -19,11 +19,15 @@ const toast = document.getElementById("toast");
 const fillDemoBtn = document.getElementById("fillDemoBtn");
 const clearBtn = document.getElementById("clearBtn");
 const closeEditorBtn = document.getElementById("closeEditorBtn");
-const desktopBridge = window.desktopBridge;
 let texts = loadTexts();
 let toastTimer = null;
 
+function getDesktopBridge() {
+  return window.desktopBridge;
+}
+
 function debugLog(type, data) {
+  const desktopBridge = getDesktopBridge();
   if (desktopBridge && typeof desktopBridge.logDebug === "function") {
     desktopBridge.logDebug(type, data);
     return;
@@ -228,6 +232,7 @@ function renderEditor() {
 }
 
 function syncInteractionLock() {
+  const desktopBridge = getDesktopBridge();
   if (!desktopBridge || typeof desktopBridge.setWindowPreset !== "function") return;
   const isOrbitOpen = launcher.classList.contains("open");
   const isEditorOpen = editorPanel.classList.contains("show");
@@ -328,6 +333,7 @@ window.addEventListener("click", (event) => {
 window.addEventListener("keydown", async (event) => {
   if (!(event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "l")) return;
   event.preventDefault();
+  const desktopBridge = getDesktopBridge();
   if (!desktopBridge || typeof desktopBridge.getDebugLogTail !== "function") return;
   const tail = await desktopBridge.getDebugLogTail();
   if (!tail) {
@@ -371,8 +377,9 @@ debugLog("renderer-startup", {
   viewport: { width: window.innerWidth, height: window.innerHeight },
   userAgent: navigator.userAgent,
 });
-if (desktopBridge && typeof desktopBridge.getDebugLogPath === "function") {
-  desktopBridge.getDebugLogPath().then((logPath) => {
+const bridgeForLogPath = getDesktopBridge();
+if (bridgeForLogPath && typeof bridgeForLogPath.getDebugLogPath === "function") {
+  bridgeForLogPath.getDebugLogPath().then((logPath) => {
     debugLog("debug-log-path", { logPath });
   });
 }
