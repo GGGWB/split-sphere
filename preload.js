@@ -1,9 +1,18 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("desktopBridge", {
-  setWindowPreset(preset) {
-    if (preset !== "compact" && preset !== "expanded") return;
-    ipcRenderer.send("set-window-preset", preset);
+  openOverlay(mode) {
+    if (mode !== "orbit" && mode !== "editor") return;
+    ipcRenderer.send("open-overlay", mode);
+  },
+  closeOverlay() {
+    ipcRenderer.send("close-overlay");
+  },
+  onHostCommand(callback) {
+    if (typeof callback !== "function") return () => {};
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("host-command", listener);
+    return () => ipcRenderer.removeListener("host-command", listener);
   },
   logDebug(type, data) {
     if (typeof type !== "string" || !type) return;

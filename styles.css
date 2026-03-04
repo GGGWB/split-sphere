@@ -40,6 +40,12 @@ body {
   z-index: 20;
 }
 
+body.mode-anchor #orbit,
+body.mode-anchor .editor-panel,
+body.mode-anchor .toast {
+  display: none !important;
+}
+
 button {
   border: 0;
   border-radius: 11px;

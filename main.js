@@ -2,11 +2,16 @@ const path = require("path");
 const fs = require("fs");
 const { app, BrowserWindow, Menu, ipcMain, screen } = require("electron");
 
-let mainWindow = null;
+let anchorWindow = null;
+let overlayWindow = null;
+let overlayReady = false;
+let pendingOverlayCommand = null;
 let debugLogPath = "";
-const WINDOW_PRESETS = {
-  compact: { width: 96, height: 96 },
-  expanded: { width: 520, height: 560 },
+let isQuitting = false;
+
+const WINDOW_SIZES = {
+  anchor: { width: 96, height: 96 },
+  overlay: { width: 520, height: 560 },
 };
 
 function toSafeJson(value) {
@@ -30,37 +35,93 @@ function appendDebugLog(scope, message, data) {
   }
 }
 
-function getBottomRightBounds(win, preset) {
-  const target = WINDOW_PRESETS[preset] || WINDOW_PRESETS.compact;
-  const display = screen.getDisplayMatching(win.getBounds());
-  const area = display.workArea;
+function getWorkArea() {
+  return screen.getPrimaryDisplay().workArea;
+}
+
+function getBottomRightBounds(size) {
+  const area = getWorkArea();
   return {
-    width: target.width,
-    height: target.height,
-    x: Math.round(area.x + area.width - target.width),
-    y: Math.round(area.y + area.height - target.height),
+    width: size.width,
+    height: size.height,
+    x: Math.round(area.x + area.width - size.width),
+    y: Math.round(area.y + area.height - size.height),
   };
 }
 
-function applyWindowPreset(win, preset) {
+function applyBottomRight(win, size) {
   if (!win || win.isDestroyed()) return;
+  const next = getBottomRightBounds(size);
   const before = win.getBounds();
-  const nextBounds = getBottomRightBounds(win, preset);
-  appendDebugLog("main", "apply-window-preset", { preset, before, nextBounds });
-  win.setBounds(nextBounds, false);
+  win.setBounds(next, false);
+  appendDebugLog("main", "apply-bottom-right", { before, next });
 }
 
-function createMainWindow() {
-  const initial = WINDOW_PRESETS.compact;
-  const workArea = screen.getPrimaryDisplay().workArea;
-  const x = Math.round(workArea.x + workArea.width - initial.width);
-  const y = Math.round(workArea.y + workArea.height - initial.height);
+function attachWindowDebug(win, label) {
+  if (!win || win.isDestroyed()) return;
+  const log = (message, data) => appendDebugLog(label, message, data);
 
-  mainWindow = new BrowserWindow({
-    width: initial.width,
-    height: initial.height,
-    x,
-    y,
+  log("created", { bounds: win.getBounds() });
+  win.on("focus", () => log("focus", { bounds: win.getBounds() }));
+  win.on("blur", () => log("blur", { bounds: win.getBounds() }));
+  win.on("moved", () => log("moved", { bounds: win.getBounds() }));
+  win.on("resized", () => log("resized", { bounds: win.getBounds() }));
+  win.on("show", () => log("show", { bounds: win.getBounds() }));
+  win.on("hide", () => log("hide", { bounds: win.getBounds() }));
+
+  win.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+    appendDebugLog("console", `${label}-renderer-console`, { level, message, line, sourceId });
+  });
+  win.webContents.on("did-start-loading", () => log("did-start-loading"));
+  win.webContents.on("did-fail-load", (_event, code, description, url, isMainFrame) => {
+    log("did-fail-load", { code, description, url, isMainFrame });
+  });
+  win.webContents.on("preload-error", (_event, preloadPath, error) => {
+    log("preload-error", { preloadPath, error: String(error) });
+  });
+  win.webContents.on("render-process-gone", (_event, details) => {
+    log("render-process-gone", details);
+  });
+  win.webContents.on("dom-ready", () => {
+    log("dom-ready");
+    const script = `(() => {
+      const bridge = window.desktopBridge;
+      return {
+        readyState: document.readyState,
+        mode: new URLSearchParams(window.location.search).get("mode"),
+        hasCenterBall: Boolean(document.getElementById("centerBall")),
+        hasAppScriptFlag: Boolean(window.__SPLIT_SPHERE_BOOTED__),
+        appScriptFlag: window.__SPLIT_SPHERE_BOOTED__ || null,
+        hasDesktopBridge: Boolean(bridge),
+        bridgeKeys: bridge ? Object.keys(bridge) : []
+      };
+    })()`;
+    win.webContents.executeJavaScript(script, true)
+      .then((inspect) => log("dom-inspect", inspect))
+      .catch((error) => log("dom-inspect-error", { error: String(error) }));
+  });
+  win.webContents.on("did-finish-load", () => {
+    log("did-finish-load", { bounds: win.getBounds() });
+    if (label === "overlay") {
+      overlayReady = true;
+      if (pendingOverlayCommand) {
+        win.webContents.send("host-command", { type: pendingOverlayCommand });
+        log("flush-pending-command", { command: pendingOverlayCommand });
+        pendingOverlayCommand = null;
+      }
+    }
+  });
+}
+
+function createWindow(mode) {
+  const size = WINDOW_SIZES[mode];
+  const bounds = getBottomRightBounds(size);
+  const win = new BrowserWindow({
+    width: bounds.width,
+    height: bounds.height,
+    x: bounds.x,
+    y: bounds.y,
+    show: mode === "anchor",
     frame: false,
     transparent: true,
     hasShadow: false,
@@ -70,6 +131,7 @@ function createMainWindow() {
     fullscreenable: false,
     alwaysOnTop: true,
     autoHideMenuBar: true,
+    skipTaskbar: true,
     backgroundColor: "#00000000",
     title: "悬浮文案球复制器",
     webPreferences: {
@@ -79,54 +141,66 @@ function createMainWindow() {
     },
   });
 
-  Menu.setApplicationMenu(null);
-  appendDebugLog("main", "create-main-window", { bounds: mainWindow.getBounds() });
-  mainWindow.on("focus", () => appendDebugLog("main", "window-focus", { bounds: mainWindow.getBounds() }));
-  mainWindow.on("blur", () => appendDebugLog("main", "window-blur", { bounds: mainWindow.getBounds() }));
-  mainWindow.on("moved", () => appendDebugLog("main", "window-moved", { bounds: mainWindow.getBounds() }));
-  mainWindow.on("resized", () => appendDebugLog("main", "window-resized", { bounds: mainWindow.getBounds() }));
-  mainWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
-    appendDebugLog("console", "renderer-console", { level, message, line, sourceId });
-  });
-  mainWindow.webContents.on("did-start-loading", () => {
-    appendDebugLog("main", "did-start-loading");
-  });
-  mainWindow.webContents.on("did-fail-load", (_event, code, description, url, isMainFrame) => {
-    appendDebugLog("main", "did-fail-load", { code, description, url, isMainFrame });
-  });
-  mainWindow.webContents.on("preload-error", (_event, preloadPath, error) => {
-    appendDebugLog("main", "preload-error", { preloadPath, error: String(error) });
-  });
-  mainWindow.webContents.on("render-process-gone", (_event, details) => {
-    appendDebugLog("main", "render-process-gone", details);
-  });
-  mainWindow.webContents.on("dom-ready", () => {
-    appendDebugLog("main", "dom-ready");
-    const script = `(() => {
-      const bridge = window.desktopBridge;
-      return {
-        readyState: document.readyState,
-        hasCenterBall: Boolean(document.getElementById("centerBall")),
-        hasAppScriptFlag: Boolean(window.__SPLIT_SPHERE_BOOTED__),
-        appScriptFlag: window.__SPLIT_SPHERE_BOOTED__ || null,
-        hasDesktopBridge: Boolean(bridge),
-        bridgeKeys: bridge ? Object.keys(bridge) : []
-      };
-    })()`;
-    mainWindow.webContents.executeJavaScript(script, true)
-      .then((inspect) => appendDebugLog("main", "dom-inspect", inspect))
-      .catch((error) => appendDebugLog("main", "dom-inspect-error", { error: String(error) }));
-  });
-  mainWindow.webContents.on("did-finish-load", () => {
-    appendDebugLog("main", "did-finish-load", { bounds: mainWindow.getBounds() });
-  });
-  mainWindow.loadFile(path.join(__dirname, "index.html"));
+  attachWindowDebug(win, mode);
+  win.loadFile(path.join(__dirname, "index.html"), { query: { mode } });
+  return win;
 }
 
-ipcMain.on("set-window-preset", (_event, preset) => {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  appendDebugLog("main", "ipc-set-window-preset", { preset });
-  applyWindowPreset(mainWindow, preset);
+function sendOverlayCommand(type) {
+  if (!overlayWindow || overlayWindow.isDestroyed()) return;
+  if (!overlayReady || overlayWindow.webContents.isLoadingMainFrame()) {
+    pendingOverlayCommand = type;
+    appendDebugLog("main", "queue-overlay-command", { type });
+    return;
+  }
+  overlayWindow.webContents.send("host-command", { type });
+  appendDebugLog("main", "send-overlay-command", { type });
+}
+
+function openOverlay(mode) {
+  if (!overlayWindow || overlayWindow.isDestroyed() || !anchorWindow || anchorWindow.isDestroyed()) return;
+  const command = mode === "editor" ? "open-editor" : "open-orbit";
+  applyBottomRight(anchorWindow, WINDOW_SIZES.anchor);
+  applyBottomRight(overlayWindow, WINDOW_SIZES.overlay);
+  if (!overlayWindow.isVisible()) overlayWindow.show();
+  overlayWindow.focus();
+  if (anchorWindow.isVisible()) anchorWindow.hide();
+  sendOverlayCommand(command);
+  appendDebugLog("main", "open-overlay", { mode, command });
+}
+
+function closeOverlay(reason) {
+  if (!overlayWindow || overlayWindow.isDestroyed() || !anchorWindow || anchorWindow.isDestroyed()) return;
+  if (overlayWindow.isVisible()) overlayWindow.hide();
+  applyBottomRight(anchorWindow, WINDOW_SIZES.anchor);
+  if (!anchorWindow.isVisible()) anchorWindow.show();
+  appendDebugLog("main", "close-overlay", { reason });
+}
+
+function repositionWindows() {
+  applyBottomRight(anchorWindow, WINDOW_SIZES.anchor);
+  applyBottomRight(overlayWindow, WINDOW_SIZES.overlay);
+}
+
+function createWindows() {
+  overlayReady = false;
+  pendingOverlayCommand = null;
+  anchorWindow = createWindow("anchor");
+  overlayWindow = createWindow("overlay");
+  overlayWindow.hide();
+  overlayWindow.on("close", (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+    closeOverlay("overlay-window-close-intercept");
+  });
+}
+
+ipcMain.on("open-overlay", (_event, mode) => {
+  openOverlay(mode === "editor" ? "editor" : "orbit");
+});
+
+ipcMain.on("close-overlay", () => {
+  closeOverlay("renderer-request");
 });
 
 ipcMain.on("renderer-debug-log", (_event, payload) => {
@@ -157,10 +231,28 @@ app.whenReady().then(() => {
     userDataPath: app.getPath("userData"),
     logPath: debugLogPath,
   });
-  createMainWindow();
+  Menu.setApplicationMenu(null);
+  createWindows();
+  screen.on("display-metrics-changed", repositionWindows);
+  screen.on("display-added", repositionWindows);
+  screen.on("display-removed", repositionWindows);
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
+    if (
+      anchorWindow &&
+      !anchorWindow.isDestroyed() &&
+      overlayWindow &&
+      !overlayWindow.isDestroyed() &&
+      !overlayWindow.isVisible()
+    ) {
+      anchorWindow.show();
+      return;
+    }
+    if (BrowserWindow.getAllWindows().length === 0) createWindows();
   });
+});
+
+app.on("before-quit", () => {
+  isQuitting = true;
 });
 
 app.on("window-all-closed", () => {

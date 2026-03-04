@@ -4,8 +4,10 @@ const TOTAL_BALLS = RING_COUNTS.reduce((sum, count) => sum + count, 0);
 const ORBIT_OPEN_STAGGER_MS = 25;
 const ORBIT_CLOSE_STAGGER_MS = 20;
 const ORBIT_TRANSITION_MS = 450;
-const WINDOW_EXPAND_SETTLE_MS = 56;
-const COMPACT_AFTER_CLOSE_MS = ORBIT_TRANSITION_MS + ORBIT_CLOSE_STAGGER_MS * (TOTAL_BALLS - 1) + 80;
+const RETURN_TO_ANCHOR_DELAY_MS = ORBIT_TRANSITION_MS + ORBIT_CLOSE_STAGGER_MS * (TOTAL_BALLS - 1) + 120;
+const MODE = new URLSearchParams(window.location.search).get("mode") || "overlay";
+const IS_ANCHOR_MODE = MODE === "anchor";
+const IS_OVERLAY_MODE = !IS_ANCHOR_MODE;
 window.__SPLIT_SPHERE_BOOTED__ = "app.js-loaded";
 console.log("[renderer] app.js loaded");
 
@@ -26,10 +28,10 @@ const clearBtn = document.getElementById("clearBtn");
 const closeEditorBtn = document.getElementById("closeEditorBtn");
 let texts = loadTexts();
 let toastTimer = null;
-let openClassTimer = null;
-let compactPresetTimer = null;
+let returnToAnchorTimer = null;
 let lastCopyText = "";
 let lastCopyAt = 0;
+document.body.classList.add(IS_ANCHOR_MODE ? "mode-anchor" : "mode-overlay");
 
 function getDesktopBridge() {
   return window.desktopBridge;
@@ -285,61 +287,50 @@ function renderEditor() {
   });
 }
 
-function setWindowPreset(preset) {
+function requestOpenOverlay(mode) {
   const desktopBridge = getDesktopBridge();
-  if (!desktopBridge || typeof desktopBridge.setWindowPreset !== "function") return;
-  debugLog("set-window-preset", { preset });
-  desktopBridge.setWindowPreset(preset);
+  if (!desktopBridge || typeof desktopBridge.openOverlay !== "function") return;
+  if (mode !== "orbit" && mode !== "editor") return;
+  debugLog("open-overlay-request", { mode });
+  desktopBridge.openOverlay(mode);
 }
 
-function clearCompactPresetTimer() {
-  if (!compactPresetTimer) return;
-  clearTimeout(compactPresetTimer);
-  compactPresetTimer = null;
+function requestCloseOverlay() {
+  const desktopBridge = getDesktopBridge();
+  if (!desktopBridge || typeof desktopBridge.closeOverlay !== "function") return;
+  debugLog("close-overlay-request");
+  desktopBridge.closeOverlay();
 }
 
-function scheduleCompactPreset(delayMs) {
-  clearCompactPresetTimer();
-  debugLog("schedule-compact-preset", { delayMs });
-  compactPresetTimer = setTimeout(() => {
-    compactPresetTimer = null;
+function clearReturnToAnchorTimer() {
+  if (!returnToAnchorTimer) return;
+  clearTimeout(returnToAnchorTimer);
+  returnToAnchorTimer = null;
+}
+
+function maybeReturnToAnchor(delayMs = 0) {
+  if (!IS_OVERLAY_MODE) return;
+  clearReturnToAnchorTimer();
+  returnToAnchorTimer = setTimeout(() => {
+    returnToAnchorTimer = null;
     if (launcher.classList.contains("open") || editorPanel.classList.contains("show")) return;
-    setWindowPreset("compact");
+    requestCloseOverlay();
   }, delayMs);
-}
-
-function clearOpenClassTimer() {
-  if (!openClassTimer) return;
-  clearTimeout(openClassTimer);
-  openClassTimer = null;
 }
 
 function setOrbitOpen(open) {
   const wasOpen = launcher.classList.contains("open");
   debugLog("set-orbit-open", { open, from: wasOpen });
   if (open === wasOpen) return;
-
+  launcher.classList.toggle("open", open);
+  centerBall.setAttribute("aria-expanded", String(open));
+  logCenterGeometry(open ? "set-orbit-open" : "set-orbit-close");
   if (open) {
-    clearCompactPresetTimer();
-    clearOpenClassTimer();
-    setWindowPreset("expanded");
-    openClassTimer = setTimeout(() => {
-      openClassTimer = null;
-      launcher.classList.add("open");
-      centerBall.setAttribute("aria-expanded", "true");
-      logCenterGeometry("set-orbit-open");
-    }, WINDOW_EXPAND_SETTLE_MS);
+    clearReturnToAnchorTimer();
     return;
   }
-
-  clearOpenClassTimer();
-  launcher.classList.remove("open");
-  centerBall.setAttribute("aria-expanded", "false");
-  logCenterGeometry("set-orbit-close");
-  if (editorPanel.classList.contains("show")) {
-    setWindowPreset("expanded");
-  } else {
-    scheduleCompactPreset(COMPACT_AFTER_CLOSE_MS);
+  if (!editorPanel.classList.contains("show")) {
+    maybeReturnToAnchor(RETURN_TO_ANCHOR_DELAY_MS);
   }
 }
 
@@ -349,16 +340,11 @@ function setEditorVisible(show) {
   if (show === wasVisible) return;
   editorPanel.classList.toggle("show", show);
   editorPanel.setAttribute("aria-hidden", String(!show));
-  if (show) {
-    clearCompactPresetTimer();
-    setWindowPreset("expanded");
+  if (show || launcher.classList.contains("open")) {
+    clearReturnToAnchorTimer();
     return;
   }
-  if (launcher.classList.contains("open")) {
-    setWindowPreset("expanded");
-  } else {
-    setWindowPreset("compact");
-  }
+  maybeReturnToAnchor(0);
 }
 
 function toggleOrbit() {
@@ -375,6 +361,10 @@ centerBall.addEventListener("click", (event) => {
     target: describeTarget(event.target),
   });
   if (event.button !== 0) return;
+  if (IS_ANCHOR_MODE) {
+    requestOpenOverlay("orbit");
+    return;
+  }
   toggleOrbit();
 });
 
@@ -382,6 +372,10 @@ centerBall.addEventListener("keydown", (event) => {
   debugLog("center-keydown", { key: event.key });
   if (event.key !== "Enter" && event.key !== " ") return;
   event.preventDefault();
+  if (IS_ANCHOR_MODE) {
+    requestOpenOverlay("orbit");
+    return;
+  }
   toggleOrbit();
 });
 
@@ -393,6 +387,10 @@ centerBall.addEventListener("contextmenu", (event) => {
     target: describeTarget(event.target),
   });
   event.preventDefault();
+  if (IS_ANCHOR_MODE) {
+    requestOpenOverlay("editor");
+    return;
+  }
   setEditorVisible(!editorPanel.classList.contains("show"));
 });
 
@@ -423,6 +421,7 @@ window.addEventListener("click", (event) => {
     y: event.clientY,
     target: describeTarget(event.target),
   });
+  if (!IS_OVERLAY_MODE) return;
   const clickedLauncher = launcher.contains(event.target);
   const clickedEditor = editorPanel.contains(event.target);
 
@@ -454,6 +453,7 @@ window.addEventListener("keydown", async (event) => {
 });
 
 fillDemoBtn.addEventListener("click", () => {
+  if (!IS_OVERLAY_MODE) return;
   texts = normalizeTexts(defaultTexts);
   saveTexts();
   renderEditor();
@@ -462,6 +462,7 @@ fillDemoBtn.addEventListener("click", () => {
 });
 
 clearBtn.addEventListener("click", () => {
+  if (!IS_OVERLAY_MODE) return;
   texts = new Array(TOTAL_BALLS).fill("");
   saveTexts();
   renderEditor();
@@ -470,15 +471,22 @@ clearBtn.addEventListener("click", () => {
 });
 
 window.addEventListener("resize", () => {
+  if (!IS_OVERLAY_MODE) return;
   updateOrbitLayout();
   logCenterGeometry("window-resize");
 });
 
-renderEditor();
-renderOrbit();
-setWindowPreset("compact");
+if (IS_OVERLAY_MODE) {
+  renderEditor();
+  renderOrbit();
+} else {
+  orbit.innerHTML = "";
+  editorPanel.classList.remove("show");
+  editorPanel.setAttribute("aria-hidden", "true");
+}
 logCenterGeometry("startup");
 debugLog("renderer-startup", {
+  mode: MODE,
   viewport: { width: window.innerWidth, height: window.innerHeight },
   userAgent: navigator.userAgent,
 });
@@ -486,5 +494,21 @@ const bridgeForLogPath = getDesktopBridge();
 if (bridgeForLogPath && typeof bridgeForLogPath.getDebugLogPath === "function") {
   bridgeForLogPath.getDebugLogPath().then((logPath) => {
     debugLog("debug-log-path", { logPath });
+  });
+}
+if (bridgeForLogPath && typeof bridgeForLogPath.onHostCommand === "function") {
+  bridgeForLogPath.onHostCommand((payload) => {
+    if (!IS_OVERLAY_MODE || !payload || typeof payload !== "object") return;
+    const type = payload.type;
+    debugLog("host-command", payload);
+    if (type === "open-orbit") {
+      setEditorVisible(false);
+      setOrbitOpen(true);
+      return;
+    }
+    if (type === "open-editor") {
+      setOrbitOpen(false);
+      setEditorVisible(true);
+    }
   });
 }
