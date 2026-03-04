@@ -10,6 +10,7 @@ const defaultTexts = [
 
 const launcher = document.getElementById("launcher");
 const centerBall = document.getElementById("centerBall");
+const centerHitbox = document.getElementById("centerHitbox");
 const orbit = document.getElementById("orbit");
 const editorPanel = document.getElementById("editorPanel");
 const editor = document.getElementById("editor");
@@ -199,6 +200,15 @@ centerBall.addEventListener("contextmenu", (event) => {
   setEditorVisible(!editorPanel.classList.contains("show"));
 });
 
+centerHitbox.addEventListener("click", () => {
+  setOrbitOpen(!launcher.classList.contains("open"));
+});
+
+centerHitbox.addEventListener("contextmenu", (event) => {
+  event.preventDefault();
+  setEditorVisible(!editorPanel.classList.contains("show"));
+});
+
 closeEditorBtn.addEventListener("click", () => setEditorVisible(false));
 
 window.addEventListener("click", (event) => {
@@ -208,7 +218,7 @@ window.addEventListener("click", (event) => {
 
   if (editorPanel.classList.contains("show")) {
     const clickedEditor = editorPanel.contains(event.target);
-    const clickedCenter = centerBall.contains(event.target);
+    const clickedCenter = centerBall.contains(event.target) || centerHitbox.contains(event.target);
     if (!clickedEditor && !clickedCenter) {
       setEditorVisible(false);
     }
