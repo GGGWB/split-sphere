@@ -28,6 +28,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-exe-build
-          path: dist/*.exe
+          path: |
+            dist/*.exe
+            dist/nsis-web/*.exe
           if-no-files-found: error
           retention-days: 5
