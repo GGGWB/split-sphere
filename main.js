@@ -1,5 +1,7 @@
 const path = require("path");
-const { app, BrowserWindow, Menu, screen } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, screen } = require("electron");
+
+let mainWindow = null;
 
 function createMainWindow() {
   const width = 520;
@@ -8,7 +10,7 @@ function createMainWindow() {
   const x = Math.round(workArea.x + workArea.width - width);
   const y = Math.round(workArea.y + workArea.height - height);
 
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width,
     height,
     x,
@@ -27,12 +29,18 @@ function createMainWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(__dirname, "preload.js"),
     },
   });
 
   Menu.setApplicationMenu(null);
-  win.loadFile(path.join(__dirname, "index.html"));
+  mainWindow.loadFile(path.join(__dirname, "index.html"));
 }
+
+ipcMain.on("set-mouse-passthrough", (_event, ignore) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.setIgnoreMouseEvents(Boolean(ignore), { forward: true });
+});
 
 app.whenReady().then(() => {
   createMainWindow();
