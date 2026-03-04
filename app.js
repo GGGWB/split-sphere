@@ -1,6 +1,8 @@
 const STORAGE_KEY = "floating-copy-balls-v2";
 const RING_COUNTS = [3, 4, 5];
 const TOTAL_BALLS = RING_COUNTS.reduce((sum, count) => sum + count, 0);
+window.__SPLIT_SPHERE_BOOTED__ = "app.js-loaded";
+console.log("[renderer] app.js loaded");
 
 const defaultTexts = [
   "早安", "收到", "安排中",
@@ -22,8 +24,11 @@ let texts = loadTexts();
 let toastTimer = null;
 
 function debugLog(type, data) {
-  if (!desktopBridge || typeof desktopBridge.logDebug !== "function") return;
-  desktopBridge.logDebug(type, data);
+  if (desktopBridge && typeof desktopBridge.logDebug === "function") {
+    desktopBridge.logDebug(type, data);
+    return;
+  }
+  console.log("[renderer-fallback]", type, data || {});
 }
 
 function describeTarget(target) {
@@ -35,6 +40,24 @@ function describeTarget(target) {
     : "";
   return `${tag}${id}${classes}`;
 }
+
+window.addEventListener("error", (event) => {
+  debugLog("window-error", {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    stack: event.error && event.error.stack ? String(event.error.stack) : "",
+  });
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  const reason = event.reason;
+  debugLog("unhandledrejection", {
+    reason: reason && reason.message ? reason.message : String(reason),
+    stack: reason && reason.stack ? String(reason.stack) : "",
+  });
+});
 
 function logCenterGeometry(reason) {
   const rect = centerBall.getBoundingClientRect();

@@ -85,6 +85,38 @@ function createMainWindow() {
   mainWindow.on("blur", () => appendDebugLog("main", "window-blur", { bounds: mainWindow.getBounds() }));
   mainWindow.on("moved", () => appendDebugLog("main", "window-moved", { bounds: mainWindow.getBounds() }));
   mainWindow.on("resized", () => appendDebugLog("main", "window-resized", { bounds: mainWindow.getBounds() }));
+  mainWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+    appendDebugLog("console", "renderer-console", { level, message, line, sourceId });
+  });
+  mainWindow.webContents.on("did-start-loading", () => {
+    appendDebugLog("main", "did-start-loading");
+  });
+  mainWindow.webContents.on("did-fail-load", (_event, code, description, url, isMainFrame) => {
+    appendDebugLog("main", "did-fail-load", { code, description, url, isMainFrame });
+  });
+  mainWindow.webContents.on("preload-error", (_event, preloadPath, error) => {
+    appendDebugLog("main", "preload-error", { preloadPath, error: String(error) });
+  });
+  mainWindow.webContents.on("render-process-gone", (_event, details) => {
+    appendDebugLog("main", "render-process-gone", details);
+  });
+  mainWindow.webContents.on("dom-ready", () => {
+    appendDebugLog("main", "dom-ready");
+    const script = `(() => {
+      const bridge = window.desktopBridge;
+      return {
+        readyState: document.readyState,
+        hasCenterBall: Boolean(document.getElementById("centerBall")),
+        hasAppScriptFlag: Boolean(window.__SPLIT_SPHERE_BOOTED__),
+        appScriptFlag: window.__SPLIT_SPHERE_BOOTED__ || null,
+        hasDesktopBridge: Boolean(bridge),
+        bridgeKeys: bridge ? Object.keys(bridge) : []
+      };
+    })()`;
+    mainWindow.webContents.executeJavaScript(script, true)
+      .then((inspect) => appendDebugLog("main", "dom-inspect", inspect))
+      .catch((error) => appendDebugLog("main", "dom-inspect-error", { error: String(error) }));
+  });
   mainWindow.webContents.on("did-finish-load", () => {
     appendDebugLog("main", "did-finish-load", { bounds: mainWindow.getBounds() });
   });
