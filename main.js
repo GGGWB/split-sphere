@@ -2,7 +2,7 @@ const path = require("path");
 const { app, BrowserWindow, Menu, ipcMain, screen } = require("electron");
 
 const WINDOW_PRESETS = {
-  compact: { width: 140, height: 140 },
+  compact: { width: 180, height: 180 },
   expanded: { width: 520, height: 560 },
 };
 

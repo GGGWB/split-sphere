@@ -191,6 +191,15 @@ function setEditorVisible(show) {
   syncWindowPreset();
 }
 
+centerBall.addEventListener("click", () => {
+  setOrbitOpen(!launcher.classList.contains("open"));
+});
+
+centerBall.addEventListener("contextmenu", (event) => {
+  event.preventDefault();
+  setEditorVisible(!editorPanel.classList.contains("show"));
+});
+
 centerHitbox.addEventListener("click", () => {
   setOrbitOpen(!launcher.classList.contains("open"));
 });

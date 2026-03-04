@@ -85,21 +85,20 @@ button.ghost {
   font-size: 0;
   color: transparent;
   z-index: 14;
-  pointer-events: none;
 }
 
 .center-hitbox {
   position: absolute;
   left: 0;
   top: 0;
-  width: 56px;
-  height: 56px;
+  width: 86px;
+  height: 86px;
   transform: translate(-100%, -100%);
   border: 0;
   border-radius: 0;
   padding: 0;
   background: transparent;
-  z-index: 16;
+  z-index: 15;
 }
 
 .orbit-ball {
