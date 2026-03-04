@@ -214,15 +214,6 @@ centerHitbox.addEventListener("contextmenu", (event) => {
 
 closeEditorBtn.addEventListener("click", () => setEditorVisible(false));
 
-// Fallback for transparent-edge hit inconsistencies on desktop:
-// if pointer is in the bottom-right center zone, trigger the same actions.
-window.addEventListener("pointerup", (event) => {
-  if (event.button !== 0) return;
-  if (!isInCenterZone(event)) return;
-  if (centerBall.contains(event.target)) return;
-  setOrbitOpen(!launcher.classList.contains("open"));
-});
-
 window.addEventListener("contextmenu", (event) => {
   if (!isInCenterZone(event)) return;
   if (centerBall.contains(event.target) || centerHitbox.contains(event.target)) return;
