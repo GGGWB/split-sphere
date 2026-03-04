@@ -18,9 +18,10 @@ const fillDemoBtn = document.getElementById("fillDemoBtn");
 const clearBtn = document.getElementById("clearBtn");
 const closeEditorBtn = document.getElementById("closeEditorBtn");
 const desktopBridge = window.desktopBridge;
-const CENTER_ZONE_SIZE = 58;
+
 let texts = loadTexts();
 let toastTimer = null;
+let lastPassthrough = null;
 
 function loadTexts() {
   try {
@@ -64,13 +65,12 @@ async function copyText(text) {
   const raw = String(text || "");
   if (!raw.trim()) {
     showToast("该球暂无文案");
-    return false;
+    return;
   }
 
   try {
     await navigator.clipboard.writeText(raw);
     showToast(`已复制: ${raw}`);
-    return true;
   } catch (_err) {
     const input = document.createElement("textarea");
     input.value = raw;
@@ -79,7 +79,6 @@ async function copyText(text) {
     document.execCommand("copy");
     input.remove();
     showToast(`已复制: ${raw}`);
-    return true;
   }
 }
 
@@ -121,10 +120,7 @@ function createBall(index, text) {
   ball.style.setProperty("--dx", dx);
   ball.style.setProperty("--dy", dy);
 
-  ball.addEventListener("click", async () => {
-    const copied = await copyText(text);
-    if (copied) setOrbitOpen(false);
-  });
+  ball.addEventListener("click", () => copyText(text));
   return ball;
 }
 
@@ -172,30 +168,30 @@ function renderEditor() {
   });
 }
 
-function isInCenterZone(event) {
-  return (
-    event.clientX >= window.innerWidth - CENTER_ZONE_SIZE &&
-    event.clientY >= window.innerHeight - CENTER_ZONE_SIZE
-  );
-}
-
-function syncWindowPreset() {
-  if (!desktopBridge || typeof desktopBridge.setWindowPreset !== "function") return;
-  const orbitOpen = launcher.classList.contains("open");
-  const editorOpen = editorPanel.classList.contains("show");
-  desktopBridge.setWindowPreset(orbitOpen || editorOpen ? "expanded" : "compact");
-}
-
 function setOrbitOpen(open) {
   launcher.classList.toggle("open", open);
   centerBall.setAttribute("aria-expanded", String(open));
-  syncWindowPreset();
 }
 
 function setEditorVisible(show) {
   editorPanel.classList.toggle("show", show);
   editorPanel.setAttribute("aria-hidden", String(!show));
-  syncWindowPreset();
+}
+
+function setMousePassthrough(ignore) {
+  if (!desktopBridge || typeof desktopBridge.setMousePassthrough !== "function") return;
+  if (lastPassthrough === ignore) return;
+  lastPassthrough = ignore;
+  desktopBridge.setMousePassthrough(ignore);
+}
+
+function isInteractiveTarget(target) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest(
+      ".center-ball, .orbit-ball, .editor-panel.show, .editor-panel.show *, .toast.show"
+    )
+  );
 }
 
 centerBall.addEventListener("click", () => {
@@ -209,38 +205,30 @@ centerBall.addEventListener("contextmenu", (event) => {
 
 closeEditorBtn.addEventListener("click", () => setEditorVisible(false));
 
-// Fallback hit logic for transparent-edge rendering: if DOM targeting misses the center
-// button but pointer is in the bottom-right center zone, still trigger the core actions.
-window.addEventListener("pointerup", (event) => {
-  if (event.button !== 0) return;
-  if (!isInCenterZone(event)) return;
-  if (centerBall.contains(event.target)) return;
-  setOrbitOpen(!launcher.classList.contains("open"));
-});
-
-window.addEventListener("contextmenu", (event) => {
-  if (!isInCenterZone(event)) return;
-  if (centerBall.contains(event.target)) return;
-  event.preventDefault();
-  setEditorVisible(!editorPanel.classList.contains("show"));
-});
-
 window.addEventListener("click", (event) => {
-  if (
-    launcher.classList.contains("open") &&
-    !launcher.contains(event.target) &&
-    !isInCenterZone(event)
-  ) {
+  if (launcher.classList.contains("open") && !launcher.contains(event.target)) {
     setOrbitOpen(false);
   }
 
   if (editorPanel.classList.contains("show")) {
     const clickedEditor = editorPanel.contains(event.target);
-    const clickedCenter = centerBall.contains(event.target) || isInCenterZone(event);
+    const clickedCenter = centerBall.contains(event.target);
     if (!clickedEditor && !clickedCenter) {
       setEditorVisible(false);
     }
   }
+});
+
+window.addEventListener("mousemove", (event) => {
+  setMousePassthrough(!isInteractiveTarget(event.target));
+});
+
+window.addEventListener("mouseleave", () => {
+  setMousePassthrough(true);
+});
+
+window.addEventListener("blur", () => {
+  setMousePassthrough(true);
 });
 
 fillDemoBtn.addEventListener("click", () => {
@@ -263,4 +251,4 @@ window.addEventListener("resize", renderOrbit);
 
 renderEditor();
 renderOrbit();
-syncWindowPreset();
+setMousePassthrough(true);

@@ -14,12 +14,6 @@
   "build": {
     "appId": "com.gggwb.floatingcopyballs",
     "productName": "悬浮文案球复制器",
-    "asar": true,
-    "compression": "maximum",
-    "electronLanguages": [
-      "zh-CN",
-      "en-US"
-    ],
     "files": [
       "index.html",
       "styles.css",
