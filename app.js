@@ -28,6 +28,8 @@ let texts = loadTexts();
 let toastTimer = null;
 let openClassTimer = null;
 let compactPresetTimer = null;
+let lastCopyText = "";
+let lastCopyAt = 0;
 
 function getDesktopBridge() {
   return window.desktopBridge;
@@ -134,6 +136,14 @@ async function copyText(text) {
     return;
   }
 
+  const now = Date.now();
+  if (raw === lastCopyText && now - lastCopyAt < 600) {
+    debugLog("copy-dedup-skip", { length: raw.length });
+    return;
+  }
+  lastCopyText = raw;
+  lastCopyAt = now;
+
   try {
     await navigator.clipboard.writeText(raw);
     debugLog("copy-success", { length: raw.length });
@@ -192,6 +202,14 @@ function setBallOffset(ball, index) {
   ball.style.setProperty("--dy", `${dy}px`);
 }
 
+function getCloseDelayMs(ring, indexInRing, count) {
+  let base = 0;
+  for (let r = RING_COUNTS.length - 1; r > ring; r -= 1) {
+    base += RING_COUNTS[r] * ORBIT_CLOSE_STAGGER_MS;
+  }
+  return base + (count - 1 - indexInRing) * ORBIT_CLOSE_STAGGER_MS;
+}
+
 function createBall(index, text) {
   const { ringInfo } = getBallOffset(index);
   const ball = document.createElement("button");
@@ -201,7 +219,7 @@ function createBall(index, text) {
   ball.textContent = getPreviewText(text);
   ball.title = text || "空文案";
   ball.style.setProperty("--delay", `${(index * ORBIT_OPEN_STAGGER_MS) / 1000}s`);
-  ball.style.setProperty("--close-delay", `${((TOTAL_BALLS - 1 - index) * ORBIT_CLOSE_STAGGER_MS) / 1000}s`);
+  ball.style.setProperty("--close-delay", `${getCloseDelayMs(ringInfo.ring, ringInfo.indexInRing, ringInfo.count) / 1000}s`);
   setBallOffset(ball, index);
 
   ball.addEventListener("click", () => copyText(text));
@@ -348,15 +366,15 @@ function toggleOrbit() {
   setOrbitOpen(!launcher.classList.contains("open"));
 }
 
-centerBall.addEventListener("pointerdown", (event) => {
-  debugLog("center-pointerdown", {
+centerBall.addEventListener("click", (event) => {
+  debugLog("center-click", {
     button: event.button,
+    detail: event.detail,
     x: event.clientX,
     y: event.clientY,
     target: describeTarget(event.target),
   });
   if (event.button !== 0) return;
-  event.preventDefault();
   toggleOrbit();
 });
 
