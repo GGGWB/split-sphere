@@ -1,7 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("desktopBridge", {
-  setInteractionLock(locked) {
-    ipcRenderer.send("set-interaction-lock", Boolean(locked));
+  setWindowPreset(preset) {
+    if (preset !== "compact" && preset !== "expanded") return;
+    ipcRenderer.send("set-window-preset", preset);
   },
 });

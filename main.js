@@ -2,49 +2,37 @@ const path = require("path");
 const { app, BrowserWindow, Menu, ipcMain, screen } = require("electron");
 
 let mainWindow = null;
-let interactionLocked = false;
-let passthroughTimer = null;
-let ignoreState = null;
-const CENTER_HOTZONE_SIZE = 84;
+const WINDOW_PRESETS = {
+  compact: { width: 180, height: 180 },
+  expanded: { width: 520, height: 560 },
+};
 
-function setIgnoreMouseEvents(ignore) {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  if (ignoreState === ignore) return;
-  ignoreState = ignore;
-  mainWindow.setIgnoreMouseEvents(ignore, { forward: true });
+function getBottomRightBounds(win, preset) {
+  const target = WINDOW_PRESETS[preset] || WINDOW_PRESETS.compact;
+  const display = screen.getDisplayMatching(win.getBounds());
+  const area = display.workArea;
+  return {
+    width: target.width,
+    height: target.height,
+    x: Math.round(area.x + area.width - target.width),
+    y: Math.round(area.y + area.height - target.height),
+  };
 }
 
-function isCursorInCenterHotzone() {
-  if (!mainWindow || mainWindow.isDestroyed()) return false;
-  const p = screen.getCursorScreenPoint();
-  const b = mainWindow.getBounds();
-  return (
-    p.x >= b.x + b.width - CENTER_HOTZONE_SIZE &&
-    p.x <= b.x + b.width &&
-    p.y >= b.y + b.height - CENTER_HOTZONE_SIZE &&
-    p.y <= b.y + b.height
-  );
-}
-
-function refreshMouseMode() {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  if (interactionLocked) {
-    setIgnoreMouseEvents(false);
-    return;
-  }
-  setIgnoreMouseEvents(!isCursorInCenterHotzone());
+function applyWindowPreset(win, preset) {
+  if (!win || win.isDestroyed()) return;
+  win.setBounds(getBottomRightBounds(win, preset), false);
 }
 
 function createMainWindow() {
-  const width = 520;
-  const height = 560;
+  const initial = WINDOW_PRESETS.compact;
   const workArea = screen.getPrimaryDisplay().workArea;
-  const x = Math.round(workArea.x + workArea.width - width);
-  const y = Math.round(workArea.y + workArea.height - height);
+  const x = Math.round(workArea.x + workArea.width - initial.width);
+  const y = Math.round(workArea.y + workArea.height - initial.height);
 
   mainWindow = new BrowserWindow({
-    width,
-    height,
+    width: initial.width,
+    height: initial.height,
     x,
     y,
     frame: false,
@@ -67,23 +55,11 @@ function createMainWindow() {
 
   Menu.setApplicationMenu(null);
   mainWindow.loadFile(path.join(__dirname, "index.html"));
-
-  if (passthroughTimer) clearInterval(passthroughTimer);
-  passthroughTimer = setInterval(refreshMouseMode, 16);
-  mainWindow.on("closed", () => {
-    if (passthroughTimer) clearInterval(passthroughTimer);
-    passthroughTimer = null;
-    mainWindow = null;
-    ignoreState = null;
-  });
-  mainWindow.on("move", refreshMouseMode);
-  mainWindow.on("resize", refreshMouseMode);
-  refreshMouseMode();
 }
 
-ipcMain.on("set-interaction-lock", (_event, locked) => {
-  interactionLocked = Boolean(locked);
-  refreshMouseMode();
+ipcMain.on("set-window-preset", (_event, preset) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  applyWindowPreset(mainWindow, preset);
 });
 
 app.whenReady().then(() => {

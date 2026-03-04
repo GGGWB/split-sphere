@@ -175,10 +175,10 @@ function isInCenterZone(event) {
 }
 
 function syncInteractionLock() {
-  if (!desktopBridge || typeof desktopBridge.setInteractionLock !== "function") return;
+  if (!desktopBridge || typeof desktopBridge.setWindowPreset !== "function") return;
   const isOrbitOpen = launcher.classList.contains("open");
   const isEditorOpen = editorPanel.classList.contains("show");
-  desktopBridge.setInteractionLock(isOrbitOpen || isEditorOpen);
+  desktopBridge.setWindowPreset(isOrbitOpen || isEditorOpen ? "expanded" : "compact");
 }
 
 function setOrbitOpen(open) {
