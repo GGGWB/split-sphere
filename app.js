@@ -171,17 +171,23 @@ function renderEditor() {
   });
 }
 
+function syncWindowPreset() {
+  if (!desktopBridge || typeof desktopBridge.setWindowPreset !== "function") return;
+  const orbitOpen = launcher.classList.contains("open");
+  const editorOpen = editorPanel.classList.contains("show");
+  desktopBridge.setWindowPreset(orbitOpen || editorOpen ? "expanded" : "compact");
+}
+
 function setOrbitOpen(open) {
   launcher.classList.toggle("open", open);
   centerBall.setAttribute("aria-expanded", String(open));
+  syncWindowPreset();
 }
 
 function setEditorVisible(show) {
   editorPanel.classList.toggle("show", show);
   editorPanel.setAttribute("aria-hidden", String(!show));
-  if (desktopBridge && typeof desktopBridge.setWindowPreset === "function") {
-    desktopBridge.setWindowPreset(show ? "expanded" : "compact");
-  }
+  syncWindowPreset();
 }
 
 centerBall.addEventListener("click", () => {
@@ -229,6 +235,4 @@ window.addEventListener("resize", renderOrbit);
 
 renderEditor();
 renderOrbit();
-if (desktopBridge && typeof desktopBridge.setWindowPreset === "function") {
-  desktopBridge.setWindowPreset("compact");
-}
+syncWindowPreset();
