@@ -17,6 +17,7 @@ const toast = document.getElementById("toast");
 const fillDemoBtn = document.getElementById("fillDemoBtn");
 const clearBtn = document.getElementById("clearBtn");
 const closeEditorBtn = document.getElementById("closeEditorBtn");
+const CENTER_ZONE_SIZE = 62;
 let texts = loadTexts();
 let toastTimer = null;
 
@@ -165,6 +166,13 @@ function renderEditor() {
   });
 }
 
+function isInCenterZone(event) {
+  return (
+    event.clientX >= window.innerWidth - CENTER_ZONE_SIZE &&
+    event.clientY >= window.innerHeight - CENTER_ZONE_SIZE
+  );
+}
+
 function setOrbitOpen(open) {
   launcher.classList.toggle("open", open);
   centerBall.setAttribute("aria-expanded", String(open));
@@ -186,14 +194,34 @@ centerBall.addEventListener("contextmenu", (event) => {
 
 closeEditorBtn.addEventListener("click", () => setEditorVisible(false));
 
+// Fallback for transparent-edge hit inconsistencies on desktop:
+// if pointer is in the bottom-right center zone, trigger the same actions.
+window.addEventListener("pointerup", (event) => {
+  if (event.button !== 0) return;
+  if (!isInCenterZone(event)) return;
+  if (centerBall.contains(event.target)) return;
+  setOrbitOpen(!launcher.classList.contains("open"));
+});
+
+window.addEventListener("contextmenu", (event) => {
+  if (!isInCenterZone(event)) return;
+  if (centerBall.contains(event.target)) return;
+  event.preventDefault();
+  setEditorVisible(!editorPanel.classList.contains("show"));
+});
+
 window.addEventListener("click", (event) => {
-  if (launcher.classList.contains("open") && !launcher.contains(event.target)) {
+  if (
+    launcher.classList.contains("open") &&
+    !launcher.contains(event.target) &&
+    !isInCenterZone(event)
+  ) {
     setOrbitOpen(false);
   }
 
   if (editorPanel.classList.contains("show")) {
     const clickedEditor = editorPanel.contains(event.target);
-    const clickedCenter = centerBall.contains(event.target);
+    const clickedCenter = centerBall.contains(event.target) || isInCenterZone(event);
     if (!clickedEditor && !clickedCenter) {
       setEditorVisible(false);
     }
