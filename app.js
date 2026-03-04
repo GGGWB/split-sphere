@@ -1,6 +1,11 @@
 const STORAGE_KEY = "floating-copy-balls-v2";
 const RING_COUNTS = [3, 4, 5];
 const TOTAL_BALLS = RING_COUNTS.reduce((sum, count) => sum + count, 0);
+const ORBIT_OPEN_STAGGER_MS = 25;
+const ORBIT_CLOSE_STAGGER_MS = 20;
+const ORBIT_TRANSITION_MS = 450;
+const WINDOW_EXPAND_SETTLE_MS = 56;
+const COMPACT_AFTER_CLOSE_MS = ORBIT_TRANSITION_MS + ORBIT_CLOSE_STAGGER_MS * (TOTAL_BALLS - 1) + 80;
 window.__SPLIT_SPHERE_BOOTED__ = "app.js-loaded";
 console.log("[renderer] app.js loaded");
 
@@ -21,6 +26,8 @@ const clearBtn = document.getElementById("clearBtn");
 const closeEditorBtn = document.getElementById("closeEditorBtn");
 let texts = loadTexts();
 let toastTimer = null;
+let openClassTimer = null;
+let compactPresetTimer = null;
 
 function getDesktopBridge() {
   return window.desktopBridge;
@@ -193,7 +200,8 @@ function createBall(index, text) {
   ball.dataset.index = String(index);
   ball.textContent = getPreviewText(text);
   ball.title = text || "空文案";
-  ball.style.setProperty("--delay", `${index * 0.025}s`);
+  ball.style.setProperty("--delay", `${(index * ORBIT_OPEN_STAGGER_MS) / 1000}s`);
+  ball.style.setProperty("--close-delay", `${((TOTAL_BALLS - 1 - index) * ORBIT_CLOSE_STAGGER_MS) / 1000}s`);
   setBallOffset(ball, index);
 
   ball.addEventListener("click", () => copyText(text));
@@ -259,29 +267,80 @@ function renderEditor() {
   });
 }
 
-function syncInteractionLock() {
+function setWindowPreset(preset) {
   const desktopBridge = getDesktopBridge();
   if (!desktopBridge || typeof desktopBridge.setWindowPreset !== "function") return;
-  const isOrbitOpen = launcher.classList.contains("open");
-  const isEditorOpen = editorPanel.classList.contains("show");
-  const preset = isOrbitOpen || isEditorOpen ? "expanded" : "compact";
-  debugLog("set-window-preset", { preset, isOrbitOpen, isEditorOpen });
+  debugLog("set-window-preset", { preset });
   desktopBridge.setWindowPreset(preset);
 }
 
+function clearCompactPresetTimer() {
+  if (!compactPresetTimer) return;
+  clearTimeout(compactPresetTimer);
+  compactPresetTimer = null;
+}
+
+function scheduleCompactPreset(delayMs) {
+  clearCompactPresetTimer();
+  debugLog("schedule-compact-preset", { delayMs });
+  compactPresetTimer = setTimeout(() => {
+    compactPresetTimer = null;
+    if (launcher.classList.contains("open") || editorPanel.classList.contains("show")) return;
+    setWindowPreset("compact");
+  }, delayMs);
+}
+
+function clearOpenClassTimer() {
+  if (!openClassTimer) return;
+  clearTimeout(openClassTimer);
+  openClassTimer = null;
+}
+
 function setOrbitOpen(open) {
-  debugLog("set-orbit-open", { open, from: launcher.classList.contains("open") });
-  launcher.classList.toggle("open", open);
-  centerBall.setAttribute("aria-expanded", String(open));
-  syncInteractionLock();
-  logCenterGeometry("set-orbit-open");
+  const wasOpen = launcher.classList.contains("open");
+  debugLog("set-orbit-open", { open, from: wasOpen });
+  if (open === wasOpen) return;
+
+  if (open) {
+    clearCompactPresetTimer();
+    clearOpenClassTimer();
+    setWindowPreset("expanded");
+    openClassTimer = setTimeout(() => {
+      openClassTimer = null;
+      launcher.classList.add("open");
+      centerBall.setAttribute("aria-expanded", "true");
+      logCenterGeometry("set-orbit-open");
+    }, WINDOW_EXPAND_SETTLE_MS);
+    return;
+  }
+
+  clearOpenClassTimer();
+  launcher.classList.remove("open");
+  centerBall.setAttribute("aria-expanded", "false");
+  logCenterGeometry("set-orbit-close");
+  if (editorPanel.classList.contains("show")) {
+    setWindowPreset("expanded");
+  } else {
+    scheduleCompactPreset(COMPACT_AFTER_CLOSE_MS);
+  }
 }
 
 function setEditorVisible(show) {
-  debugLog("set-editor-visible", { show, from: editorPanel.classList.contains("show") });
+  const wasVisible = editorPanel.classList.contains("show");
+  debugLog("set-editor-visible", { show, from: wasVisible });
+  if (show === wasVisible) return;
   editorPanel.classList.toggle("show", show);
   editorPanel.setAttribute("aria-hidden", String(!show));
-  syncInteractionLock();
+  if (show) {
+    clearCompactPresetTimer();
+    setWindowPreset("expanded");
+    return;
+  }
+  if (launcher.classList.contains("open")) {
+    setWindowPreset("expanded");
+  } else {
+    setWindowPreset("compact");
+  }
 }
 
 function toggleOrbit() {
@@ -399,7 +458,7 @@ window.addEventListener("resize", () => {
 
 renderEditor();
 renderOrbit();
-syncInteractionLock();
+setWindowPreset("compact");
 logCenterGeometry("startup");
 debugLog("renderer-startup", {
   viewport: { width: window.innerWidth, height: window.innerHeight },
