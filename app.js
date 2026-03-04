@@ -185,13 +185,10 @@ function setMousePassthrough(ignore) {
   desktopBridge.setMousePassthrough(ignore);
 }
 
-function isInteractiveTarget(target) {
-  if (!(target instanceof Element)) return false;
-  return Boolean(
-    target.closest(
-      ".center-ball, .orbit-ball, .editor-panel.show, .editor-panel.show *, .toast.show"
-    )
-  );
+function getInteractiveHitElement(clientX, clientY) {
+  const hit = document.elementFromPoint(clientX, clientY);
+  if (!(hit instanceof Element)) return null;
+  return hit.closest(".center-ball, .orbit-ball, .editor-panel.show, .editor-panel.show *");
 }
 
 centerBall.addEventListener("click", () => {
@@ -220,15 +217,15 @@ window.addEventListener("click", (event) => {
 });
 
 window.addEventListener("mousemove", (event) => {
-  setMousePassthrough(!isInteractiveTarget(event.target));
-});
+  const orbitOpen = launcher.classList.contains("open");
+  const editorOpen = editorPanel.classList.contains("show");
+  if (orbitOpen || editorOpen) {
+    setMousePassthrough(false);
+    return;
+  }
 
-window.addEventListener("mouseleave", () => {
-  setMousePassthrough(true);
-});
-
-window.addEventListener("blur", () => {
-  setMousePassthrough(true);
+  const interactiveHit = getInteractiveHitElement(event.clientX, event.clientY);
+  setMousePassthrough(!interactiveHit);
 });
 
 fillDemoBtn.addEventListener("click", () => {
@@ -251,4 +248,4 @@ window.addEventListener("resize", renderOrbit);
 
 renderEditor();
 renderOrbit();
-setMousePassthrough(true);
+setMousePassthrough(false);
