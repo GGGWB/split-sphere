@@ -14,6 +14,22 @@ const WINDOW_SIZES = {
   overlay: { width: 520, height: 560 },
 };
 
+function pinAlwaysOnTop(win, reason) {
+  if (!win || win.isDestroyed()) return;
+  try {
+    // Use highest commonly supported top-most tier on Windows.
+    win.setAlwaysOnTop(true, "screen-saver");
+  } catch (_error) {
+    win.setAlwaysOnTop(true);
+  }
+  try {
+    win.moveTop();
+  } catch (_error) {
+    // moveTop may fail on some platforms/window managers.
+  }
+  appendDebugLog("main", "pin-always-on-top", { reason, bounds: win.getBounds() });
+}
+
 function toSafeJson(value) {
   try {
     return JSON.stringify(value);
@@ -68,6 +84,8 @@ function attachWindowDebug(win, label) {
   win.on("resized", () => log("resized", { bounds: win.getBounds() }));
   win.on("show", () => log("show", { bounds: win.getBounds() }));
   win.on("hide", () => log("hide", { bounds: win.getBounds() }));
+  win.on("show", () => pinAlwaysOnTop(win, `${label}-show`));
+  win.on("focus", () => pinAlwaysOnTop(win, `${label}-focus`));
 
   win.webContents.on("console-message", (_event, level, message, line, sourceId) => {
     appendDebugLog("console", `${label}-renderer-console`, { level, message, line, sourceId });
@@ -143,6 +161,7 @@ function createWindow(mode) {
 
   attachWindowDebug(win, mode);
   win.loadFile(path.join(__dirname, "index.html"), { query: { mode } });
+  pinAlwaysOnTop(win, `${mode}-create`);
   return win;
 }
 
@@ -165,6 +184,7 @@ function openOverlay(mode) {
   sendOverlayCommand(command);
   if (anchorWindow.isVisible()) anchorWindow.hide();
   if (!overlayWindow.isVisible()) overlayWindow.show();
+  pinAlwaysOnTop(overlayWindow, "open-overlay");
   overlayWindow.focus();
   appendDebugLog("main", "open-overlay", { mode, command });
 }
@@ -174,6 +194,7 @@ function closeOverlay(reason) {
   if (overlayWindow.isVisible()) overlayWindow.hide();
   applyBottomRight(anchorWindow, WINDOW_SIZES.anchor);
   if (!anchorWindow.isVisible()) anchorWindow.show();
+  pinAlwaysOnTop(anchorWindow, "close-overlay");
   appendDebugLog("main", "close-overlay", { reason });
 }
 
