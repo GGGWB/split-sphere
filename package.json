@@ -5,7 +5,8 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "pack:win": "electron-builder --win nsis --publish never"
+    "pack:win": "electron-builder --win nsis --x64 --publish never",
+    "pack:win32": "electron-builder --win nsis --ia32 --publish never"
   },
   "devDependencies": {
     "electron": "^31.7.7",
@@ -32,14 +33,7 @@
       "output": "dist"
     },
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
+      "target": ["nsis"]
     },
     "nsis": {
       "oneClick": false,
