@@ -9,6 +9,8 @@ const OPEN_FROM_ANCHOR_GUARD_MS = 220;
 const MODE = new URLSearchParams(window.location.search).get("mode") || "overlay";
 const IS_ANCHOR_MODE = MODE === "anchor";
 const IS_OVERLAY_MODE = !IS_ANCHOR_MODE;
+// fix #9: 仅开发模式（file://）启用 IPC 调试日志，生产包静默
+const IS_DEV = location.protocol === "file:" && /[?&]devtools/.test(location.search);
 window.__SPLIT_SPHERE_BOOTED__ = "app.js-loaded";
 console.log("[renderer] app.js loaded");
 
@@ -40,6 +42,8 @@ function getDesktopBridge() {
 }
 
 function debugLog(type, data) {
+  // fix #9: 生产环境静默，避免无效 IPC 开销
+  if (!IS_DEV) return;
   const desktopBridge = getDesktopBridge();
   if (desktopBridge && typeof desktopBridge.logDebug === "function") {
     desktopBridge.logDebug(type, data);
@@ -115,6 +119,16 @@ function normalizeTexts(list) {
 
 function saveTexts() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(texts));
+}
+
+// fix #3: 防止每次击键都写 localStorage，延迟 300ms 合并写入
+let saveTimer = null;
+function saveTextsDebounced() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    saveTexts();
+  }, 300);
 }
 
 function showToast(message) {
@@ -234,14 +248,25 @@ function createBall(index, text) {
   ball.style.setProperty("--close-delay", `${getCloseDelayMs(ringInfo.ring, ringInfo.indexInRing, ringInfo.count) / 1000}s`);
   setBallOffset(ball, index);
 
-  ball.addEventListener("click", () => copyText(text));
+  // fix #2: 每次点击从 texts[index] 读取最新值，避免闭包捕获旧内容
+  ball.addEventListener("click", () => copyText(texts[index]));
   return ball;
 }
 
+// fix #12: patch 模式，已存在的球只更新内容，避免销毁 DOM 导致动画状态丢失
 function renderOrbit() {
-  orbit.innerHTML = "";
-  texts.forEach((text, index) => {
-    orbit.appendChild(createBall(index, text));
+  const existing = orbit.querySelectorAll(".orbit-ball");
+  // 如果球的数量不对，完整重建
+  if (existing.length !== texts.length) {
+    orbit.innerHTML = "";
+    texts.forEach((text, index) => orbit.appendChild(createBall(index, text)));
+    return;
+  }
+  // 数量一致时，只 patch 文字和 title
+  existing.forEach((ball, index) => {
+    const text = texts[index];
+    ball.textContent = getPreviewText(text);
+    ball.title = text || "空文案";
   });
 }
 
@@ -281,7 +306,7 @@ function createEditorItem(index, text) {
   input.placeholder = `文案 ${index + 1}`;
   input.addEventListener("input", () => {
     texts[index] = input.value;
-    saveTexts();
+    saveTextsDebounced(); // fix #3: debounce 写入
     updateOrbitText(index, input.value);
   });
 

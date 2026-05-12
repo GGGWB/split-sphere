@@ -1,3 +1,33 @@
+/* ===== 本地字体（fix #1）===== */
+@font-face {
+  font-family: "Noto Sans SC";
+  font-weight: 400;
+  font-style: normal;
+  src: url("./fonts/noto-sans-sc-400.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Noto Sans SC";
+  font-weight: 500;
+  font-style: normal;
+  src: url("./fonts/noto-sans-sc-500.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Noto Sans SC";
+  font-weight: 700;
+  font-style: normal;
+  src: url("./fonts/noto-sans-sc-700.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "ZCOOL KuaiLe";
+  font-weight: 400;
+  font-style: normal;
+  src: url("./fonts/zcool-kuaile.ttf") format("truetype");
+  font-display: swap;
+}
+
 :root {
   --line: rgba(31, 30, 36, 0.12);
   --ring-1: #ff6f3c;
@@ -225,6 +255,11 @@ button.ghost {
   pointer-events: none;
   transition: 0.25s ease;
   z-index: 50;
+  /* fix #5: 防止长文案擑破布局 */
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .toast.show {

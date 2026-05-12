@@ -27,7 +27,8 @@
       "app.js",
       "main.js",
       "preload.js",
-      "package.json"
+      "package.json",
+      "fonts/**"
     ],
     "directories": {
       "output": "dist"

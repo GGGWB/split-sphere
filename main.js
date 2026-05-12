@@ -45,6 +45,15 @@ function appendDebugLog(scope, message, data) {
   console.log(line);
   if (!debugLogPath) return;
   try {
+    // fix #10: 超过 2MB 时轮转，旧文件改名为 .bak
+    const MAX_BYTES = 2 * 1024 * 1024;
+    if (fs.existsSync(debugLogPath)) {
+      const stat = fs.statSync(debugLogPath);
+      if (stat.size > MAX_BYTES) {
+        const bakPath = debugLogPath + ".bak";
+        try { fs.renameSync(debugLogPath, bakPath); } catch (_e) { /* ignore */ }
+      }
+    }
     fs.appendFileSync(debugLogPath, `${line}\n`, "utf8");
   } catch (_error) {
     // Ignore logging IO failures.
