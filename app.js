@@ -333,6 +333,9 @@ function requestOpenOverlay(mode) {
 function requestCloseOverlay() {
   const desktopBridge = getDesktopBridge();
   if (!desktopBridge || typeof desktopBridge.closeOverlay !== "function") return;
+  // overlay 隐藏前先 reset 轨道球到关闭态
+  // 确保下次 window.show() 时球已在正确位置，消除残影闪现
+  resetOrbitToClosedState();
   debugLog("close-overlay-request");
   desktopBridge.closeOverlay();
 }

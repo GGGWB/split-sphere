@@ -124,11 +124,7 @@ button.ghost {
   color: transparent;
   z-index: 14;
   outline: none;
-  /* 预提升合成层，避免 hover/click 时临时触发层创建导致闪烁 */
-  will-change: transform;
-  /* 明确 transition，防止浏览器插入隐式过渡 */
   transition: transform 0.12s ease, filter 0.12s ease;
-  /* 阻止 -webkit-tap-highlight 在 Electron Chromium 中的闪光 */
   -webkit-tap-highlight-color: transparent;
 }
 
