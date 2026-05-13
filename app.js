@@ -383,9 +383,20 @@ function setEditorVisible(show) {
   maybeReturnToAnchor(0);
 }
 
+function resetOrbitToClosedState() {
+  // 强制将轨道球 reset 到关闭态（无动效），确保下次展开动效从头播放
+  // 场景：overlay 被隐藏时 transition 冻结在中途，直接 setOrbitOpen(true) 会没有动效
+  launcher.classList.add("no-transition");
+  launcher.classList.remove("open");
+  void orbit.offsetHeight; // 强制 reflow，提交关闭状态
+  launcher.classList.remove("no-transition");
+}
+
 function toggleOrbit() {
   debugLog("toggle-orbit", { current: launcher.classList.contains("open") });
-  setOrbitOpen(!launcher.classList.contains("open"));
+  const willOpen = !launcher.classList.contains("open");
+  if (willOpen) resetOrbitToClosedState();
+  setOrbitOpen(willOpen);
 }
 
 centerBall.addEventListener("click", (event) => {
@@ -564,6 +575,7 @@ if (bridgeForLogPath && typeof bridgeForLogPath.onHostCommand === "function") {
     hideToast();
     if (type === "open-orbit") {
       setEditorVisible(false);
+      resetOrbitToClosedState(); // 确保每次从 anchor 打开都有完整展开动效
       setOrbitOpen(true);
       return;
     }

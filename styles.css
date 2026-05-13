@@ -178,6 +178,11 @@ button.ghost {
   transition-delay: var(--delay, 0s), calc(var(--delay, 0s) + 0.055s);
 }
 
+/* 强制 reset 时禁用 transition，确保瞬间回到关闭态 */
+.launcher.no-transition .orbit-ball {
+  transition: none !important;
+}
+
 .editor-panel {
   position: absolute;
   right: 146px;
