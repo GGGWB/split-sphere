@@ -333,9 +333,9 @@ function requestOpenOverlay(mode) {
 function requestCloseOverlay() {
   const desktopBridge = getDesktopBridge();
   if (!desktopBridge || typeof desktopBridge.closeOverlay !== "function") return;
-  // overlay 隐藏前先 reset 轨道球到关闭态
-  // 确保下次 window.show() 时球已在正确位置，消除残影闪现
+  // snap 到关闭态，并清理 will-change（overlay 即将隐藏，不再需要合成层）
   resetOrbitToClosedState();
+  orbit.querySelectorAll(".orbit-ball").forEach((b) => b.style.removeProperty("will-change"));
   debugLog("close-overlay-request");
   desktopBridge.closeOverlay();
 }
@@ -387,14 +387,13 @@ function setEditorVisible(show) {
 }
 
 function resetOrbitToClosedState() {
-  // open 类不存在时跳过，避免无意义 reflow
-  if (!launcher.classList.contains("open") && !launcher.classList.contains("no-transition")) return;
+  // 无条件将轨道球 snap 到关闭态（无动效）
+  // 不加守卫：即使 open 类已移除，也需要强制 reflow 提交关闭展示状态
   launcher.classList.add("no-transition");
   launcher.classList.remove("open");
-  void orbit.offsetHeight; // 强制 reflow，提交关闭状态
+  void orbit.offsetHeight; // 强制 reflow
   launcher.classList.remove("no-transition");
-  // 关闭态不需要合成层，移除 will-change 释放 GPU 资源
-  orbit.querySelectorAll(".orbit-ball").forEach((b) => b.style.removeProperty("will-change"));
+  // 注意：will-change 不在这里移除，由 requestCloseOverlay 负责清理
 }
 
 function toggleOrbit() {
