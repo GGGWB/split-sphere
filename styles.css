@@ -124,30 +124,35 @@ button.ghost {
   color: transparent;
   z-index: 14;
   outline: none;
-  transition: transform 0.12s ease, filter 0.12s ease;
+  transition: filter 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 覆盖 Chromium 对 button 的默认 hover/active 样式，防止亮度跳变 */
 .center-ball:hover {
-  filter: brightness(1.08);
-  transform: translate(-50%, -50%) scale(1.04);
+  filter: brightness(1.1);
 }
 
-.center-ball:active {
-  filter: brightness(0.94);
-  transform: translate(-50%, -50%) scale(0.96);
+/* 点击弹跳动效 */
+@keyframes center-bounce {
+  0%   { transform: translate(-50%, -50%) scale(1); }
+  30%  { transform: translate(-50%, -50%) scale(0.82); }
+  62%  { transform: translate(-50%, -50%) scale(1.12); }
+  82%  { transform: translate(-50%, -50%) scale(0.96); }
+  100% { transform: translate(-50%, -50%) scale(1); }
 }
 
+.center-ball.clicking {
+  animation: center-bounce 0.38s ease;
+}
+
+/* 副球关闭态：缩在主球中心，不可见 */
 .orbit-ball {
-  transform: translate(-50%, -50%) translate(calc(var(--dx, 0px) * 0.16), calc(var(--dy, 0px) * 0.16)) scale(0.32);
+  transform: translate(-50%, -50%) scale(0);
   opacity: 0;
   pointer-events: none;
-  transition-property: transform, opacity;
-  transition-duration: 0.45s, 0.22s;
-  transition-timing-function: cubic-bezier(0.2, 1.2, 0.32, 1), ease-out;
-  transition-delay: var(--close-delay, 0s), calc(var(--close-delay, 0s) + 0.02s);
-  /* will-change 由 JS 在展开前动态注入，关闭后移除，避免 12 个球常驻 GPU 合成层 */
+  /* 收回：快速 ease-in，外圈先收 */
+  transition: transform 0.2s ease-in, opacity 0.15s ease-in;
+  transition-delay: var(--close-delay, 0s);
   backface-visibility: hidden;
 }
 
@@ -167,11 +172,13 @@ button.ghost {
   box-shadow: 0 10px 25px rgba(130, 109, 53, 0.25);
 }
 
+/* 副球展开态：炸开到目标位置，弹性 spring 曲线，内圈先出 */
 .launcher.open .orbit-ball {
+  transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(1);
   opacity: 1;
   pointer-events: auto;
-  transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(1);
-  transition-delay: var(--delay, 0s), calc(var(--delay, 0s) + 0.055s);
+  transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease-out;
+  transition-delay: var(--open-delay, 0s);
 }
 
 /* 强制 reset 时禁用 transition，确保瞬间回到关闭态 */

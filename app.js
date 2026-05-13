@@ -1,10 +1,10 @@
 const STORAGE_KEY = "floating-copy-balls-v2";
 const RING_COUNTS = [3, 4, 5];
 const TOTAL_BALLS = RING_COUNTS.reduce((sum, count) => sum + count, 0);
-const ORBIT_OPEN_STAGGER_MS = 25;
-const ORBIT_CLOSE_STAGGER_MS = 20;
-const ORBIT_TRANSITION_MS = 450;
-const RETURN_TO_ANCHOR_DELAY_MS = ORBIT_TRANSITION_MS + ORBIT_CLOSE_STAGGER_MS * (TOTAL_BALLS - 1) + 40;
+const ORBIT_OPEN_STAGGER_MS = 18;   // 展开逐球延迟（内圈先出）
+const ORBIT_CLOSE_STAGGER_MS = 12;  // 收回逐球延迟（外圈先收）
+const ORBIT_CLOSE_DURATION_MS = 200; // 收回动效时长（对应 CSS 0.2s）
+const RETURN_TO_ANCHOR_DELAY_MS = ORBIT_CLOSE_DURATION_MS + ORBIT_CLOSE_STAGGER_MS * (TOTAL_BALLS - 1) + 50;
 const OPEN_FROM_ANCHOR_GUARD_MS = 220;
 const MODE = new URLSearchParams(window.location.search).get("mode") || "overlay";
 const IS_ANCHOR_MODE = MODE === "anchor";
@@ -228,13 +228,6 @@ function setBallOffset(ball, index) {
   ball.style.setProperty("--dy", `${dy}px`);
 }
 
-function getCloseDelayMs(ring, indexInRing, count) {
-  let base = 0;
-  for (let r = RING_COUNTS.length - 1; r > ring; r -= 1) {
-    base += RING_COUNTS[r] * ORBIT_CLOSE_STAGGER_MS;
-  }
-  return base + (count - 1 - indexInRing) * ORBIT_CLOSE_STAGGER_MS;
-}
 
 function createBall(index, text) {
   const { ringInfo } = getBallOffset(index);
@@ -244,11 +237,10 @@ function createBall(index, text) {
   ball.dataset.index = String(index);
   ball.textContent = getPreviewText(text);
   ball.title = text || "空文案";
-  ball.style.setProperty("--delay", `${(index * ORBIT_OPEN_STAGGER_MS) / 1000}s`);
-  ball.style.setProperty("--close-delay", `${getCloseDelayMs(ringInfo.ring, ringInfo.indexInRing, ringInfo.count) / 1000}s`);
+  // 内圈先出，外圈先收
+  ball.style.setProperty("--open-delay", `${(index * ORBIT_OPEN_STAGGER_MS) / 1000}s`);
+  ball.style.setProperty("--close-delay", `${((TOTAL_BALLS - 1 - index) * ORBIT_CLOSE_STAGGER_MS) / 1000}s`);
   setBallOffset(ball, index);
-
-  // fix #2: 每次点击从 texts[index] 读取最新值，避免闭包捕获旧内容
   ball.addEventListener("click", () => copyText(texts[index]));
   return ball;
 }
@@ -333,9 +325,7 @@ function requestOpenOverlay(mode) {
 function requestCloseOverlay() {
   const desktopBridge = getDesktopBridge();
   if (!desktopBridge || typeof desktopBridge.closeOverlay !== "function") return;
-  // snap 到关闭态，并清理 will-change（overlay 即将隐藏，不再需要合成层）
   resetOrbitToClosedState();
-  orbit.querySelectorAll(".orbit-ball").forEach((b) => b.style.removeProperty("will-change"));
   debugLog("close-overlay-request");
   desktopBridge.closeOverlay();
 }
@@ -387,45 +377,37 @@ function setEditorVisible(show) {
 }
 
 function resetOrbitToClosedState() {
-  // 无条件将轨道球 snap 到关闭态（无动效）
-  // 不加守卫：即使 open 类已移除，也需要强制 reflow 提交关闭展示状态
   launcher.classList.add("no-transition");
   launcher.classList.remove("open");
-  void orbit.offsetHeight; // 强制 reflow
+  void orbit.offsetHeight;
   launcher.classList.remove("no-transition");
-  // 注意：will-change 不在这里移除，由 requestCloseOverlay 负责清理
+}
+
+function triggerCenterBounce() {
+  centerBall.classList.remove("clicking");
+  void centerBall.offsetWidth; // 重启 animation
+  centerBall.classList.add("clicking");
+  centerBall.addEventListener("animationend", () => centerBall.classList.remove("clicking"), { once: true });
 }
 
 function toggleOrbit() {
   debugLog("toggle-orbit", { current: launcher.classList.contains("open") });
   const willOpen = !launcher.classList.contains("open");
-  if (willOpen) {
-    // 展开前提升合成层，确保动效流畅
-    orbit.querySelectorAll(".orbit-ball").forEach((b) => b.style.setProperty("will-change", "transform, opacity"));
-    resetOrbitToClosedState();
-  }
+  if (willOpen) resetOrbitToClosedState();
   setOrbitOpen(willOpen);
 }
 
 centerBall.addEventListener("click", (event) => {
-  debugLog("center-click", {
-    button: event.button,
-    detail: event.detail,
-    x: event.clientX,
-    y: event.clientY,
-    target: describeTarget(event.target),
-  });
   if (event.button !== 0) return;
-  if (IS_OVERLAY_MODE && Date.now() < suppressCenterClickUntil) {
-    if (launcher.classList.contains("open")) {
-      debugLog("center-click-suppressed", { until: suppressCenterClickUntil, reason: "prevent-immediate-close" });
-      return;
-    }
-    suppressCenterClickUntil = 0;
-  }
+  // 主球弹跳反馈
+  triggerCenterBounce();
   if (IS_ANCHOR_MODE) {
     requestOpenOverlay("orbit");
     return;
+  }
+  if (Date.now() < suppressCenterClickUntil) {
+    if (launcher.classList.contains("open")) return;
+    suppressCenterClickUntil = 0;
   }
   toggleOrbit();
 });
@@ -590,8 +572,6 @@ if (bridgeForLogPath && typeof bridgeForLogPath.onHostCommand === "function") {
     hideToast();
     if (type === "open-orbit") {
       setEditorVisible(false);
-      // 展开前提升合成层 + reset，确保动效流畅且从头播放
-      orbit.querySelectorAll(".orbit-ball").forEach((b) => b.style.setProperty("will-change", "transform, opacity"));
       resetOrbitToClosedState();
       setOrbitOpen(true);
       return;
