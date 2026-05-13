@@ -479,12 +479,18 @@ window.addEventListener("click", (event) => {
 
 window.addEventListener("blur", () => {
   if (!IS_OVERLAY_MODE) return;
-  const hasOpenUi = launcher.classList.contains("open") || editorPanel.classList.contains("show");
-  if (!hasOpenUi) return;
-  debugLog("window-blur-autoclose");
-  setEditorVisible(false);
-  setOrbitOpen(false);
-  maybeReturnToAnchor(0);
+  // 延迟 150ms：给第三次点击触发的 setOrbitOpen(true) 留出时间
+  // 先执行 clearReturnToAnchorTimer，避免竞态把第三次展开立刻关掉
+  setTimeout(() => {
+    // 若在保护期内（刚从 anchor 打开），不执行 blur 关闭
+    if (Date.now() < suppressCenterClickUntil) return;
+    const hasOpenUi = launcher.classList.contains("open") || editorPanel.classList.contains("show");
+    if (!hasOpenUi) return;
+    debugLog("window-blur-autoclose");
+    setEditorVisible(false);
+    setOrbitOpen(false);
+    maybeReturnToAnchor(0);
+  }, 150);
 });
 
 window.addEventListener("keydown", async (event) => {
