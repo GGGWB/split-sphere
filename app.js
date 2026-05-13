@@ -384,13 +384,6 @@ function resetOrbitToClosedState() {
   launcher.classList.remove("no-transition");
 }
 
-function triggerCenterBounce() {
-  centerBall.classList.remove("clicking");
-  void centerBall.offsetWidth; // 重启 animation
-  centerBall.classList.add("clicking");
-  centerBall.addEventListener("animationend", () => centerBall.classList.remove("clicking"), { once: true });
-}
-
 function toggleOrbit() {
   debugLog("toggle-orbit", { current: launcher.classList.contains("open") });
   const willOpen = !launcher.classList.contains("open");
@@ -400,8 +393,6 @@ function toggleOrbit() {
 
 centerBall.addEventListener("click", (event) => {
   if (event.button !== 0) return;
-  // 主球弹跳反馈
-  triggerCenterBounce();
   if (IS_ANCHOR_MODE) {
     requestOpenOverlay("orbit");
     return;

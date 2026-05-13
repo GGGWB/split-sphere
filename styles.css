@@ -125,26 +125,10 @@ button.ghost {
   color: transparent;
   z-index: 14;
   outline: none;
-  transition: filter 0.15s ease;
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
-.center-ball:hover {
-  filter: brightness(1.1);
-}
-
-/* 点击弹跳动效：只向内压缩，不外扭，视觉上圆心锁在角落 */
-@keyframes center-bounce {
-  0%   { transform: translate(-50%, -50%) scale(1); }
-  28%  { transform: translate(-50%, -50%) scale(0.78); }
-  58%  { transform: translate(-50%, -50%) scale(0.94); }
-  78%  { transform: translate(-50%, -50%) scale(0.98); }
-  100% { transform: translate(-50%, -50%) scale(1); }
-}
-
-.center-ball.clicking {
-  animation: center-bounce 0.38s ease;
-}
 
 /* 副球关闭态：缩在主球中心，不可见 */
 .orbit-ball {
