@@ -147,7 +147,7 @@ button.ghost {
   transition-duration: 0.45s, 0.22s;
   transition-timing-function: cubic-bezier(0.2, 1.2, 0.32, 1), ease-out;
   transition-delay: var(--close-delay, 0s), calc(var(--close-delay, 0s) + 0.02s);
-  will-change: transform, opacity;
+  /* will-change 由 JS 在展开前动态注入，关闭后移除，避免 12 个球常驻 GPU 合成层 */
   backface-visibility: hidden;
 }
 

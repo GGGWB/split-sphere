@@ -387,18 +387,24 @@ function setEditorVisible(show) {
 }
 
 function resetOrbitToClosedState() {
-  // 强制将轨道球 reset 到关闭态（无动效），确保下次展开动效从头播放
-  // 场景：overlay 被隐藏时 transition 冻结在中途，直接 setOrbitOpen(true) 会没有动效
+  // open 类不存在时跳过，避免无意义 reflow
+  if (!launcher.classList.contains("open") && !launcher.classList.contains("no-transition")) return;
   launcher.classList.add("no-transition");
   launcher.classList.remove("open");
   void orbit.offsetHeight; // 强制 reflow，提交关闭状态
   launcher.classList.remove("no-transition");
+  // 关闭态不需要合成层，移除 will-change 释放 GPU 资源
+  orbit.querySelectorAll(".orbit-ball").forEach((b) => b.style.removeProperty("will-change"));
 }
 
 function toggleOrbit() {
   debugLog("toggle-orbit", { current: launcher.classList.contains("open") });
   const willOpen = !launcher.classList.contains("open");
-  if (willOpen) resetOrbitToClosedState();
+  if (willOpen) {
+    // 展开前提升合成层，确保动效流畅
+    orbit.querySelectorAll(".orbit-ball").forEach((b) => b.style.setProperty("will-change", "transform, opacity"));
+    resetOrbitToClosedState();
+  }
   setOrbitOpen(willOpen);
 }
 
@@ -493,17 +499,24 @@ window.addEventListener("click", (event) => {
 
 window.addEventListener("blur", () => {
   if (!IS_OVERLAY_MODE) return;
-  // 延迟 150ms：给第三次点击触发的 setOrbitOpen(true) 留出时间
-  // 先执行 clearReturnToAnchorTimer，避免竞态把第三次展开立刻关掉
+  // 延迟 150ms：给第三次点击触发的 setOrbitOpen(true) 留出时间先 clearTimer
   setTimeout(() => {
-    // 若在保护期内（刚从 anchor 打开），不执行 blur 关闭
     if (Date.now() < suppressCenterClickUntil) return;
-    const hasOpenUi = launcher.classList.contains("open") || editorPanel.classList.contains("show");
-    if (!hasOpenUi) return;
+    const isOrbitOpen = launcher.classList.contains("open");
+    const isEditorOpen = editorPanel.classList.contains("show");
+    if (!isOrbitOpen && !isEditorOpen) return;
     debugLog("window-blur-autoclose");
-    setEditorVisible(false);
-    setOrbitOpen(false);
-    maybeReturnToAnchor(0);
+    // 直接 reset 状态 + 关闭，跳过多余的 timer 链
+    clearReturnToAnchorTimer();
+    if (isEditorOpen) {
+      editorPanel.classList.remove("show");
+      editorPanel.setAttribute("aria-hidden", "true");
+    }
+    if (isOrbitOpen) {
+      launcher.classList.remove("open");
+      centerBall.setAttribute("aria-expanded", "false");
+    }
+    requestCloseOverlay();
   }, 150);
 });
 
@@ -578,7 +591,9 @@ if (bridgeForLogPath && typeof bridgeForLogPath.onHostCommand === "function") {
     hideToast();
     if (type === "open-orbit") {
       setEditorVisible(false);
-      resetOrbitToClosedState(); // 确保每次从 anchor 打开都有完整展开动效
+      // 展开前提升合成层 + reset，确保动效流畅且从头播放
+      orbit.querySelectorAll(".orbit-ball").forEach((b) => b.style.setProperty("will-change", "transform, opacity"));
+      resetOrbitToClosedState();
       setOrbitOpen(true);
       return;
     }
