@@ -11,7 +11,7 @@ let isQuitting = false;
 
 const WINDOW_SIZES = {
   anchor: { width: 96, height: 96 },
-  overlay: { width: 520, height: 560 },
+  overlay: { width: 640, height: 640 },
 };
 
 function pinAlwaysOnTop(win, reason) {

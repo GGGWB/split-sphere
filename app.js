@@ -1,5 +1,5 @@
 const STORAGE_KEY = "floating-copy-balls-v2";
-const RING_COUNTS = [3, 4, 5];
+const RING_COUNTS = [3, 4, 5, 6];
 const TOTAL_BALLS = RING_COUNTS.reduce((sum, count) => sum + count, 0);
 const ORBIT_OPEN_STAGGER_MS = 18;   // 展开逐球延迟（内圈先出）
 const ORBIT_CLOSE_STAGGER_MS = 12;  // 收回逐球延迟（外圈先收）
@@ -18,6 +18,7 @@ const defaultTexts = [
   "早安", "收到", "安排中",
   "稍后回复", "马上处理", "已确认", "感谢支持",
   "进度正常", "请再确认", "已发给你", "今天完成", "继续推进",
+  "稍等一下", "没问题", "了解了", "已收到", "进行中", "马上回复",
 ];
 
 const launcher = document.getElementById("launcher");
@@ -203,7 +204,7 @@ function getRingInfo(index) {
 
 function getOrbitRadii() {
   const isMobile = window.matchMedia("(max-width: 780px)").matches;
-  return isMobile ? [86, 152, 220] : [116, 206, 298];
+  return isMobile ? [86, 152, 220, 288] : [116, 206, 298, 390];
 }
 
 function getBallOffset(index) {
