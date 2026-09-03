@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
 
 env:
-  # 已使用 v5+ actions，actions 默认跑在 Node 24+，无需强制升级
+  # 强制 v4 actions 跑在 Node 24，规避 GitHub Actions runner 的 Node 20 弃用告警
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -14,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
@@ -29,7 +30,7 @@ jobs:
         run: npm run pack:win
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v4
         with:
           name: windows-exe-x64
           path: dist/*.exe
