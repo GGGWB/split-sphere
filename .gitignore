@@ -1,5 +1,7 @@
 node_modules/
 dist/
+dist-artifact/
+dist-artifacts/
 .DS_Store
 
 # WorkBuddy 本地工作数据（memory 等），不入库
