@@ -1,31 +1,19 @@
-/* ===== 本地字体（fix #1）===== */
+/* ===== 本地字体：GB2312 子集 + WOFF2（33MB -> 1.9MB）=====
+   子集外的生僻字会自动回退到 PingFang SC / Microsoft YaHei，不会显示豆腐块。 */
 @font-face {
   font-family: "Noto Sans SC";
   font-weight: 400;
   font-style: normal;
-  src: url("./fonts/noto-sans-sc-400.ttf") format("truetype");
-  font-display: swap;
-}
-@font-face {
-  font-family: "Noto Sans SC";
-  font-weight: 500;
-  font-style: normal;
-  src: url("./fonts/noto-sans-sc-500.ttf") format("truetype");
-  font-display: swap;
+  src: url("./fonts/noto-sans-sc-400.woff2") format("woff2");
+  /* block：子集字体体积极小，加载极快；等待期不渲染，避免 swap 造成文字闪烁 */
+  font-display: block;
 }
 @font-face {
   font-family: "Noto Sans SC";
   font-weight: 700;
   font-style: normal;
-  src: url("./fonts/noto-sans-sc-700.ttf") format("truetype");
-  font-display: swap;
-}
-@font-face {
-  font-family: "ZCOOL KuaiLe";
-  font-weight: 400;
-  font-style: normal;
-  src: url("./fonts/zcool-kuaile.ttf") format("truetype");
-  font-display: swap;
+  src: url("./fonts/noto-sans-sc-700.woff2") format("woff2");
+  font-display: block;
 }
 
 :root {
@@ -71,12 +59,6 @@ body {
   z-index: 20;
 }
 
-body.mode-anchor #orbit,
-body.mode-anchor .editor-panel,
-body.mode-anchor .toast {
-  display: none !important;
-}
-
 button {
   border: 0;
   border-radius: 11px;
@@ -120,6 +102,7 @@ button.ghost {
   width: 86px;
   height: 86px;
   background: radial-gradient(circle at 30% 25%, #ff9f43, #ff5a31 78%);
+  box-shadow: none; /* 覆盖 .ball 的 box-shadow，避免重绘闪烁 */
   transform: translate(-50%, -50%);
   font-size: 0;
   color: transparent;
@@ -129,6 +112,15 @@ button.ghost {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* 显式封死所有伪类，防止 Chromium button 默认亮度/背景变化引发闪烁 */
+.center-ball:hover,
+.center-ball:active,
+.center-ball:focus,
+.center-ball:focus-visible {
+  background: radial-gradient(circle at 30% 25%, #ff9f43, #ff5a31 78%);
+  outline: none;
+  filter: none;
+}
 
 /* 副球关闭态：缩在主球中心，不可见 */
 .orbit-ball {
@@ -212,12 +204,22 @@ button.ghost {
 
 .editor-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
+  justify-content: flex-end;
 }
 
 .editor-actions button {
   padding: 6px 9px;
   font-size: 12px;
+  flex-shrink: 0;
+}
+
+.close-editor {
+  width: 28px;
+  padding: 6px 0;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .hint {

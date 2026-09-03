@@ -1,12 +1,11 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("desktopBridge", {
-  openOverlay(mode) {
-    if (mode !== "orbit" && mode !== "editor") return;
-    ipcRenderer.send("open-overlay", mode);
+  setPassthrough(passthrough) {
+    ipcRenderer.send("set-passthrough", Boolean(passthrough));
   },
-  closeOverlay() {
-    ipcRenderer.send("close-overlay");
+  showContextMenu() {
+    ipcRenderer.send("show-context-menu");
   },
   onHostCommand(callback) {
     if (typeof callback !== "function") return () => {};
@@ -23,5 +22,14 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   },
   getDebugLogTail() {
     return ipcRenderer.invoke("get-debug-log-tail");
+  },
+  writeClipboard(text) {
+    return ipcRenderer.invoke("write-clipboard", text);
+  },
+  exportTexts(payload) {
+    return ipcRenderer.invoke("export-texts", payload);
+  },
+  importTexts() {
+    return ipcRenderer.invoke("import-texts");
   },
 });

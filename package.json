@@ -27,6 +27,7 @@
       "app.js",
       "main.js",
       "preload.js",
+      "tray-icon.png",
       "package.json",
       "fonts/**"
     ],
